@@ -27,7 +27,7 @@ function view_dashboard(m){
 let EV={team:'',stage:'C',role:'Supervisor (own team)'};
 function view_evals(m){
   if(!DB.team.length){m.innerHTML=head('Evaluations','Add a team first.')+'<div class="panel">Go to Teams and add a team.</div>';return}
-  if(!EV.team||!DB.team.find(t=>t.id===EV.team)){EV.team=DB.team[0].id;Object.assign(EV,teamDefaults(EV.team))}
+  if(!EV.team||!DB.team.find(t=>t.id===EV.team)){EV.team=DB.team[0].id;const dd=teamDefaults(EV.team,true);delete dd.fromReq;Object.assign(EV,dd)}
   const S=STAGES[EV.stage];
   const ex=DB.evaluation.find(e=>e.team===EV.team&&e.stage===EV.stage&&e.role===EV.role)||{scores:{},comments:{},summary:''};
   const tt=teamTotals(EV.team);
@@ -41,7 +41,7 @@ function view_evals(m){
   <div class="panel"><h2>Weighted total (supervisor evaluations)</h2>${Object.keys(STAGES).map(k=>`<div class="kpi"><span>${k}. ${STAGES[k].name.split(' - ')[1]} (${STAGES[k].w}%)</span><b>${tt.out[k]!=null?tt.out[k].toFixed(1):'-'} / ${STAGES[k].w}</b></div>`).join('')}<div class="kpi total"><span>Running total</span><b>${tt.all.toFixed(1)} / 100</b></div>${flags(EV.team).map(x=>`<div class="flag ${x[0]}">${esc(x[1])}</div>`).join('')}<div class="hint" style="margin-top:8px">25% rule: percent of Term 1 points (40). 50% rule: percent of all 100 points.</div></div></div>`;
   const recalc=()=>{let pts=0;S.g.forEach((g,gi)=>{const a=[...m.querySelectorAll(`.rng[data-g="${gi}"]`)].map(x=>+x.value);pts+=a.reduce((x,y)=>x+y,0)/a.length/10*g[1]});$('#live').textContent='This evaluation: '+pts.toFixed(1)+' / '+S.w};
   m.querySelectorAll('.rng').forEach(r=>r.oninput=()=>{r.nextSibling.textContent=r.value;r.parentNode.nextSibling.textContent=BANDS(+r.value);recalc()});recalc();
-  $('#et').onchange=e=>{EV.team=e.target.value;Object.assign(EV,teamDefaults(EV.team));route()};$('#es').onchange=e=>{EV.stage=e.target.value;route()};$('#er').onchange=e=>{EV.role=e.target.value;route()};
+  $('#et').onchange=e=>{EV.team=e.target.value;const dd=teamDefaults(EV.team,true);delete dd.fromReq;Object.assign(EV,dd);route()};$('#es').onchange=e=>{EV.stage=e.target.value;route()};$('#er').onchange=e=>{EV.role=e.target.value;route()};
   const collect=()=>{const scores={},comments={};S.g.forEach((g,gi)=>{scores[gi]=[...m.querySelectorAll(`.rng[data-g="${gi}"]`)].map(x=>+x.value);comments[gi]=g[2].map((_,ci)=>m.querySelector(`[data-cg="${gi}"][data-cc="${ci}"]`).value)});return {team:EV.team,stage:EV.stage,role:EV.role,scores,comments,summary:$('#sum').value,date:new Date().toISOString().slice(0,10)}};
   $('#saveev').onclick=async()=>{const o=collect();if(ex.id)o.id=ex.id;if(await save('evaluation',o))route()};
   $('#copyev').onclick=()=>{const o=collect();let t=`${teamName(o.team)}\nStage ${S.name}\n`;S.g.forEach((g,gi)=>g[2].forEach((c,ci)=>t+=`${c}: ${o.scores[gi][ci]}/10 - ${o.comments[gi][ci]}\n`));t+='\nOverall: '+o.summary;navigator.clipboard.writeText(t);$('#live').textContent='Copied'};
