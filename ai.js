@@ -37,7 +37,7 @@ function preChecks(txt,stage){
 const PCOL={ok:'#157347',warn:'#b26a00',flag:'#b42318',missing:'#b42318'};
 function checksHtml(c){return '<table><tr><th>Check</th><th>Result</th><th>Detail / evidence (quoted from report)</th></tr>'+c.map(x=>`<tr><td>${esc(x.name)}</td><td style="color:${PCOL[x.status]};font-weight:600">${esc(x.status.toUpperCase())}</td><td>${esc(x.detail)}${x.evidence.map(e=>`<div class="hint">"${esc(e)}"</div>`).join('')}</td></tr>`).join('')+'</table>'}
 function rubricSnapshot(st){const S=STAGES[st];return {stage:st,name:S.name,weight:S.w,groups:S.g.map(g=>({name:g[0],max:g[1],criteria:g[2]}))}}
-const MODES=['Supervisor evaluation (own team)','External evaluation (another team)','Project proposal'];
+const MODES=['Supervisor evaluation (own team)','External evaluation (another team)','Project proposal','Write full proposal'];
 let AI_TXT='',AI_FILE='';
 function view_aieval(m){
   const reqs=(DB.evalreq||[]).slice().reverse();
@@ -45,12 +45,12 @@ function view_aieval(m){
   `<div class="panel"><h2>New request</h2><div class="grid2">
   <div><label>Team</label><select id="a_team">${DB.team.map(t=>`<option value="${t.id}">Team ${esc(t.no)} - ${esc(t.title)}</option>`).join('')}</select></div>
   <div><label>Stage</label><select id="a_stage">${Object.keys(STAGES).map(k=>`<option value="${k}">${esc(STAGES[k].name)}</option>`).join('')}</select></div>
-  <div><label>Mode</label><select id="a_mode">${MODES.map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
+  <div><label>Mode</label><select id="a_mode">${MODES.slice(0,3).map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
   <div id="a_scale" class="hint" style="grid-column:1/-1"></div><div id="a_filebox"><label>Report file (PDF, DOCX or TXT)</label><input type="file" id="a_file" accept=".pdf,.docx,.txt,.md"></div></div>
   <label>Extracted text (edit if the extraction missed something)</label><textarea id="a_txt" rows="8" style="width:100%"></textarea>
   <div class="toolbar"><button class="btn" id="a_chk">Run pre-checks</button> <button class="btn" id="a_req">Request AI evaluation</button></div>
   <div id="a_out"></div></div>
-  <div class="panel"><h2>Requests</h2>${reqs.length?`<table><tr><th>Date</th><th>Team</th><th>Stage</th><th>Mode</th><th>Status</th><th></th></tr>${reqs.map(r=>`<tr><td>${esc((r.created||'').slice(0,10))}</td><td>${esc(teamName(r.team))}</td><td>${esc(r.stage)}</td><td>${esc(r.mode)}</td><td><span class="chip">${esc(r.status)}</span></td><td><button class="btn sm" onclick="openReq('${r.id}')">Open</button></td></tr>`).join('')}</table>`:'<div class="hint">No requests yet.</div>'}</div>`;
+  <div class="panel"><h2>Requests</h2>${reqs.length?`<table><tr><th>Date</th><th>Team</th><th>Stage</th><th>Mode</th><th>Status</th><th></th></tr>${reqs.map(r=>`<tr><td>${esc((r.created||'').slice(0,10))}</td><td>${esc(r.team?teamName(r.team):(r.title||'-'))}</td><td>${esc(r.stage)}</td><td>${esc(r.mode)}</td><td><span class="chip">${esc(r.status)}</span></td><td><button class="btn sm" onclick="openReq('${r.id}')">Open</button></td></tr>`).join('')}</table>`:'<div class="hint">No requests yet.</div>'}</div>`;
   $('#a_file').onchange=async e=>{const f=e.target.files[0];if(!f)return;AI_FILE=f.name;$('#a_out').innerHTML='Extracting text...';try{AI_TXT=await extractText(f);$('#a_txt').value=AI_TXT;$('#a_out').innerHTML='Extracted '+AI_TXT.split(/\s+/).length+' words.'}catch(x){$('#a_out').innerHTML='<span style="color:#b42318">Could not read the file: '+esc(x.message)+'</span>'}};
   const modeUi=()=>{const mo=$('#a_mode').value,pr=mo===MODES[2];$('#a_filebox').style.display=pr?'none':'';$('#a_stage').disabled=pr;$('#a_chk').style.display=pr?'none':'';$('#a_scale').innerHTML=pr?'Proposal mode: describe the topic, area, student level and any constraints below. The assistant drafts 3 to 5 proposals in the skill template (no report needed).':'Rating scale: 9-10 Exemplary, 7-8 Satisfactory, 5-6 Developing, 2-4 Unsatisfactory, 0-1 Unacceptable. '+(mo===MODES[1]?'External mode: objective examiner tone, numeric rating per section.':'Supervisor mode: formative feedback, firm and constructive.')};
   $('#a_mode').onchange=modeUi;modeUi();
@@ -60,18 +60,18 @@ function view_aieval(m){
     if(ok){route();const o=document.querySelector('#a_out');if(o)o.innerHTML='<b style="color:#157347">Request saved as PENDING.</b> The draft evaluation will appear in the Requests list below.'}};
 }
 function openReq(id){const r=DB.evalreq.find(x=>x.id===id);if(!r)return;
-  openModal(`<h2>${esc(teamName(r.team))} - Stage ${esc(r.stage)} - ${esc(r.mode)}</h2><div class="hint">Status: <b>${esc(r.status)}</b>${r.file?' | file: '+esc(r.file):''}</div>
-  <h3>Rule-based pre-checks</h3>${checksHtml(r.prechecks||[])}
+  openModal(`<h2>${esc(r.team?teamName(r.team):(r.title||'Idea request'))} - ${r.team?'Stage '+esc(r.stage)+' - ':''}${esc(r.mode)}</h2>${r.brief?'<div class="hint">Brief: '+esc(r.brief)+(r.count?' | ideas: '+esc(r.count):'')+(r.constraints?' | constraints: '+esc(r.constraints):'')+'</div>':''}<div class="hint">Status: <b>${esc(r.status)}</b>${r.file?' | file: '+esc(r.file):''}</div>
+  ${r.team?'<h3>Rule-based pre-checks</h3>'+checksHtml(r.prechecks||[]):''}
   <h3>Draft evaluation ${r.draft?'(DRAFT written by the assistant; edit freely)':''}</h3>
   ${r.draft?`<textarea id="r_draft" rows="16" style="width:100%;font-family:monospace;font-size:12px">${esc(r.draft)}</textarea><label>Your notes / final marks</label><textarea id="r_notes" rows="3" style="width:100%">${esc(r.notes||'')}</textarea>`:'<div class="hint">Waiting for the assistant to write the draft.</div>'}
-  <div class="toolbar">${r.draft?`<button class="btn" onclick="reqSave('${id}','accepted')">Save as accepted</button> <button class="btn" onclick="reqSave('${id}','draft')">Save edits</button> <button class="btn" onclick="reqDl('${id}')">Export</button> `:''}<button class="btn" onclick="closeModal()">Close</button></div>`)}
+  <div class="toolbar">${r.draft?`<button class="btn" onclick="reqSave('${id}','accepted')">Save as accepted</button> <button class="btn" onclick="reqSave('${id}','draft')">Save edits</button> <button class="btn" onclick="reqDl('${id}')">Export</button> ${r.mode===MODES[3]?`<button class="btn" onclick="propFromDraft('${id}')">Create proposal from draft</button> `:''}`:''}<button class="btn" onclick="closeModal()">Close</button></div>`)}
 async function reqSave(id,status){const r=DB.evalreq.find(x=>x.id===id);const ok=await save('evalreq',{...r,id,draft:$('#r_draft').value,notes:$('#r_notes').value,status:status==='accepted'?'accepted':(r.status==='accepted'?'accepted':'draft-edited')});if(ok){closeModal();route()}}
 function reqDl(id){const r=DB.evalreq.find(x=>x.id===id);dl('evaluation-'+teamName(r.team).replace(/\W+/g,'_')+'-stage'+r.stage+'.txt',`${teamName(r.team)}\nStage ${r.stage} - ${r.mode}\nStatus: ${r.status}\n\n${$('#r_draft')?$('#r_draft').value:r.draft}\n\nEvaluator notes:\n${$('#r_notes')?$('#r_notes').value:(r.notes||'')}\n`,'text/plain')}
 
 // ---- Team import from a report title page (rule-based; the evaluator confirms every field)
 function parseTitlePage(txt){
   const L=String(txt||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,60),head=L.join('\n');
-  const GEN=/university|faculty|department|college|kingdom|ministry|senior design|ee\s*-?\s*499|course|semester|term\b|report$|^report|submitted|prepared|supervis|advisor|team|student|date|table of contents|abstract|fall|spring|summer|\d{4}/i;
+  const GEN=/project description|technical requirements|university|faculty|department|college|kingdom|ministry|senior design|ee\s*-?\s*499|course|semester|term\b|report$|^report|submitted|prepared|supervis|advisor|team|student|date|table of contents|abstract|fall|spring|summer|\d{4}/i;
   let title='';const ti=L.findIndex(l=>/^(project\s+title|title)\s*[:\-]/i.test(l));
   if(ti>=0){title=L[ti].replace(/^[^:\-]*[:\-]\s*/,'').trim()||L[ti+1]||''}
   else{const i=L.findIndex(l=>l.length>=15&&l.length<150&&!GEN.test(l));if(i>=0){title=L[i];const n=L[i+1];if(n&&n.length<100&&!GEN.test(n)&&!/^\d/.test(n)&&/^[a-z(]|^(for|in|of|and|with|using|based)\b/i.test(n))title+=' '+n}}
@@ -105,3 +105,21 @@ function importTeamModal(){
     closeModal();route()};
 }
 const _vt=view_teams;view_teams=function(m){_vt(m);const tb=m.querySelector('.toolbar');if(tb){const b=document.createElement('button');b.className='btn';b.style.marginLeft='8px';b.textContent='Import from report';b.onclick=importTeamModal;tb.appendChild(b)}};
+
+// ---- Idea Bank requests (skill Mode 1) and proposal writing
+function ideaReqModal(){openModal(`<h2>Request new project ideas</h2><div class="hint">The assistant drafts ideas in the skill template (background, problem statement, objectives, methodology, technologies, deliverables, standards, feasibility). You choose which to keep.</div>
+  <label>Topic or area</label><input id="q_topic" placeholder="e.g. embedded systems for healthcare"><label>Number of ideas</label><select id="q_n"><option>3</option><option>4</option><option>5</option></select>
+  <label>Constraints (budget, tools, student level, customer)</label><textarea id="q_con" rows="3"></textarea><label>Proposed as</label><select id="q_by"><option>Supervisor</option><option>Customer</option><option>Customer + Supervisor</option></select>
+  <div class="toolbar"><button class="btn" id="q_go">Request ideas</button> <button class="btn" onclick="closeModal()">Cancel</button></div><div id="q_msg" class="hint"></div>`);
+  $('#q_go').onclick=async()=>{const t=$('#q_topic').value.trim();if(!t){$('#q_msg').textContent='Enter a topic or area.';return}
+    if(await save('evalreq',{team:'',stage:'-',mode:MODES[2],title:'Ideas: '+t,brief:t,count:$('#q_n').value,constraints:$('#q_con').value,by:$('#q_by').value,status:'pending',report_text:'',draft:'',notes:'',prechecks:[]})){closeModal();location.hash='#aieval'}}}
+async function proposalReq(id){const r=DB.idea.find(x=>x.id===id);if(!r)return;
+  if(await save('evalreq',{team:'',stage:'-',mode:MODES[3],title:'Proposal: '+r.title,brief:r.title+(r.notes?'\n'+r.notes:''),idea:id,by:r.by,status:'pending',report_text:'',draft:'',notes:'',prechecks:[]})){location.hash='#aieval'}}
+function propFromDraft(id){const r=DB.evalreq.find(x=>x.id===id);const t=($('#r_draft')?$('#r_draft').value:r.draft)||'';
+  const sec=(a,b)=>{const m=t.match(new RegExp(a+'\\s*\\n([\\s\\S]*?)(?=\\n\\s*(?:'+b+')\\s*\\n|$)','i'));return m?m[1].trim():''};
+  const H='Project Description|Technical Requirements|Final Product|Recommended Courses and Skills|Additional Details';
+  const idea=DB.idea.find(x=>x.id===r.idea);
+  const cs=sec('Recommended Courses and Skills','Additional Details');const ci=cs.search(/skills\s*:/i);
+  save('proposal',{title:idea?idea.title:(r.title||'').replace(/^Proposal:\s*/,''),as:r.by||'Supervisor',intake:'',status:'Draft',description:sec('Project Description','Technical Requirements'),requirements:sec('Technical Requirements','Final Product').replace(/^[-*\u2022]\s*/gm,''),product:sec('Final Product','Recommended Courses and Skills'),courses:ci<0?cs:cs.slice(0,ci).replace(/^courses\s*:/i,'').trim(),skills:ci<0?'':cs.slice(ci).replace(/^skills\s*:/i,'').trim(),details:sec('Additional Details','$^')}).then(ok=>{if(ok){closeModal();location.hash='#proposals'}})}
+const _vi=view_ideas;view_ideas=function(m){_vi(m);const tb=m.querySelector('.toolbar');if(tb){const b=document.createElement('button');b.className='btn';b.style.marginLeft='8px';b.textContent='Request ideas';b.onclick=ideaReqModal;tb.appendChild(b)}
+  m.querySelectorAll('[data-p]').forEach(p=>{const b=document.createElement('button');b.className='btn sm ghost';b.textContent='Write full proposal';b.onclick=()=>proposalReq(p.dataset.p);p.parentNode.insertBefore(b,p)})};
