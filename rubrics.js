@@ -39,3 +39,26 @@ function view_rubrics(m){
     const ok=await save('rubric',{stage:st,version:ver,active:true,note:$('#r_note').value,groups:g});if(ok){applyRubrics();route()}};
   const rs=$('#r_reset');if(rs)rs.onclick=async()=>{for(const h of hist.filter(h=>h.active)){await save('rubric',{...h,active:false})}applyRubrics();route()};
 }
+// ---- Import rubric from a link (request queue: the assistant reads the link and writes a draft rubric back)
+const RUB_LINK_MODE='Rubric from link';
+(function(){
+  const orig=view_rubrics;
+  view_rubrics=function(m){
+    orig(m);
+    const st=location.hash.split(':')[1]||'A';
+    const reqs=(DB.evalreq||[]).filter(r=>r.mode===RUB_LINK_MODE).slice().reverse();
+    const stat=r=>!r.draft?'Waiting for the assistant to read the link':(/^RESTRICTED/i.test(r.draft)?'Needs your input':(r.status==='accepted'?'Loaded':'Draft ready'));
+    const p=document.createElement('div');p.className='panel';
+    p.innerHTML=`<h2>Import rubric from a link</h2><div class="hint">Paste the link to the evaluation form or rubric and choose the stage. A browser page cannot open Google Forms or sign-in pages itself, so this queues a request. The assistant reads the link and writes the criteria back as a DRAFT rubric for you to check. If the link is restricted, the reply here will ask you to paste the text or upload a PDF or screenshot. The paste box and the file upload above still work.</div>
+    <div class="grid2"><div><label>Link (URL)</label><input id="rl_url" placeholder="https://..."></div><div><label>Stage</label><select id="rl_stage">${Object.keys(STAGES).map(k=>`<option ${k===st?'selected':''}>${k}</option>`).join('')}</select></div></div>
+    <div class="toolbar"><button class="btn" id="rl_go">Queue import request</button> <span id="rl_msg" class="hint"></span></div>
+    ${reqs.length?`<table><tr><th>Date</th><th>Stage</th><th>Link</th><th>Status</th><th></th></tr>${reqs.map(r=>`<tr><td>${esc((r.created||'').slice(0,10))}</td><td>${esc(r.stage)}</td><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></td><td>${esc(stat(r))}</td><td>${r.draft&&!/^RESTRICTED/i.test(r.draft)?`<button class="btn sm" data-rl="${r.id}">Load draft into editor</button>`:''}</td></tr>${r.draft&&/^RESTRICTED/i.test(r.draft)?`<tr><td colspan="5"><div class="flag sug">${esc(r.draft)}</div></td></tr>`:''}`).join('')}</table>`:''}`;
+    m.appendChild(p);
+    p.querySelector('#rl_go').onclick=async()=>{const u=p.querySelector('#rl_url').value.trim();const s=p.querySelector('#rl_stage').value;
+      if(!/^https?:\/\//i.test(u)){p.querySelector('#rl_msg').textContent='Enter a full link starting with https://';return}
+      if(await save('evalreq',{team:'',stage:s,mode:RUB_LINK_MODE,title:'Rubric import, stage '+s,url:u,status:'pending',report_text:'',draft:'',notes:'',prechecks:[]}))route()};
+    p.querySelectorAll('[data-rl]').forEach(b=>b.onclick=()=>{const r=DB.evalreq.find(x=>x.id===b.dataset.rl);
+      if(r.stage!==st){location.hash='#rubrics:'+r.stage;setTimeout(()=>{const t=document.querySelector('#r_text');if(t){t.value=r.draft;document.querySelector('#r_msg').textContent='Draft rubric loaded from the link request. Check names and marks, then save.'}},200);return}
+      $('#r_text').value=r.draft;$('#r_msg').textContent='Draft rubric loaded from the link request. Check names and marks, then save.';window.scrollTo(0,0)});
+  };
+})();
