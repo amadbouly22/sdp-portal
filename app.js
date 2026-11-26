@@ -3,12 +3,12 @@ const SB_KEY='sb_publishable_wqNkYrd-cvp_v8q1yuZKAg_ufPtLKZC';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let DB={idea:[],proposal:[],team:[],meeting:[],evaluation:[],document:[]};
-const VIEWS=[['dashboard','Dashboard','\u25A3'],['ideas','Idea Bank','\u270E'],['proposals','Proposals','\uD83D\uDCC4'],['teams','Teams','\uD83D\uDC65'],['meetings','Meeting Minutes','\uD83D\uDCC5'],['evals','Evaluations','\u2713'],['docs','Reports & Files','\uD83D\uDCC1'],['export','Export','\u21E9']];
+let DB={idea:[],proposal:[],team:[],meeting:[],evaluation:[],document:[],evalreq:[]};
+const VIEWS=[['dashboard','Dashboard','\u25A3'],['ideas','Idea Bank','\u270E'],['proposals','Proposals','\uD83D\uDCC4'],['teams','Teams','\uD83D\uDC65'],['meetings','Meeting Minutes','\uD83D\uDCC5'],['evals','Evaluations','\u2713'],['docs','Reports & Files','\uD83D\uDCC1'],['aieval','AI Evaluation','\u2728'],['export','Export','\u21E9']];
 async function loadAll(){
   const {data,error}=await sb.from('records').select('*').order('created_at');
   if(error){alert('Load error: '+error.message);return}
-  DB={idea:[],proposal:[],team:[],meeting:[],evaluation:[],document:[]};
+  DB={idea:[],proposal:[],team:[],meeting:[],evaluation:[],document:[],evalreq:[]};
   data.forEach(r=>{if(DB[r.kind])DB[r.kind].push({id:r.id,created:r.created_at,...r.data})});
 }
 async function save(kind,obj){
