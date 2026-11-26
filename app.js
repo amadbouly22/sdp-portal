@@ -3,13 +3,13 @@ const SB_KEY='sb_publishable_wqNkYrd-cvp_v8q1yuZKAg_ufPtLKZC';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let DB={idea:[],proposal:[],team:[],meeting:[],evaluation:[],document:[],evalreq:[]};
-const VIEWS=[['dashboard','Dashboard','\u25A3'],['ideas','Idea Bank','\u270E'],['proposals','Proposals','\uD83D\uDCC4'],['teams','Teams','\uD83D\uDC65'],['meetings','Meeting Minutes','\uD83D\uDCC5'],['evals','Evaluations','\u2713'],['docs','Reports & Files','\uD83D\uDCC1'],['aieval','AI Evaluation','\u2728'],['export','Export','\u21E9']];
+let DB={idea:[],proposal:[],team:[],meeting:[],evaluation:[],document:[],evalreq:[],rubric:[]};
+const VIEWS=[['dashboard','Dashboard','\u25A3'],['ideas','Idea Bank','\u270E'],['proposals','Proposals','\uD83D\uDCC4'],['teams','Teams','\uD83D\uDC65'],['meetings','Meeting Minutes','\uD83D\uDCC5'],['evals','Evaluations','\u2713'],['docs','Reports & Files','\uD83D\uDCC1'],['aieval','AI Evaluation','\u2728'],['rubrics','Rubrics','\u2630'],['export','Export','\u21E9']];
 async function loadAll(){
   const {data,error}=await sb.from('records').select('*').order('created_at');
   if(error){alert('Load error: '+error.message);return}
-  DB={idea:[],proposal:[],team:[],meeting:[],evaluation:[],document:[],evalreq:[]};
-  data.forEach(r=>{if(DB[r.kind])DB[r.kind].push({id:r.id,created:r.created_at,...r.data})});
+  DB={idea:[],proposal:[],team:[],meeting:[],evaluation:[],document:[],evalreq:[],rubric:[]};
+  data.forEach(r=>{if(DB[r.kind])DB[r.kind].push({id:r.id,created:r.created_at,...r.data})});if(window.applyRubrics)applyRubrics();
 }
 async function save(kind,obj){
   const {id,created,...data}=obj;
@@ -23,7 +23,7 @@ async function del(id){if(!confirm('Delete this record?'))return;const r=await s
 function openModal(html){$('#mbox').innerHTML=html;$('#modal').classList.add('on')}
 function closeModal(){$('#modal').classList.remove('on')}
 function teamName(id){const t=DB.team.find(x=>x.id===id);return t?('Team '+t.no+' - '+t.title):'-'}
-function route(){const v=(location.hash.slice(1)||'dashboard');
+function route(){const v=(location.hash.slice(1)||'dashboard').split(':')[0];
   $('#nav').innerHTML=VIEWS.map(x=>`<a href="#${x[0]}" class="${x[0]===v?'on':''}"><i>${x[2]}</i>${x[1]}</a>`).join('');
   const f=window['view_'+v];$('#main').innerHTML='';if(f)f($('#main'));}
 window.addEventListener('hashchange',route);
