@@ -11,14 +11,15 @@ async function extractRaw(file,n){
 }
 const ESC=/\b(if|when|usually|typically|generally|etc\.?|and so on|as needed|approximately|fast|quickly|easy|user[- ]friendly|reliable|good|robust)\b/i;
 const UNIT=/\d+(\.\d+)?\s*(%|ms|s|sec|min|h|hours?|days?|months?|years?|hz|khz|mhz|ghz|v|mv|a|ma|w|mw|kw|wh|mah|m|cm|mm|km|kg|g|db|dbm|bps|kbps|mbps|gbps|sar|\$|usd|°c|c|lux|mb|gb|kb)\b/i;
-const STAGE_SECS={A:['Background','Problem statement','Objectives','Design specifications','Constraints','Engineering standards','Assumptions','Deliverables'],B:['Literature review','Alternative designs','Baseline design','References'],C:['Background','Problem statement','Objectives','Design specifications','Constraints','Engineering standards','Assumptions','Deliverables','Literature review','Alternative designs','Baseline design','References'],D:['Implementation','Validation','Work plan','References'],E:null};
+const STAGE_SECS={A:['Background','Problem statement','Objectives','Design specifications','Constraints','Engineering standards','Assumptions','Deliverables'],B:['Literature review','Alternative designs','Baseline design','References'],C:['Background','Problem statement','Objectives','Design specifications','Constraints','Engineering standards','Assumptions','Deliverables','Literature review','Alternative designs','Baseline design','References'],D:['Implementation','Validation','Work plan','References'],E:['Implementation','Validation','Results','Conclusion','References']};
 function preChecks(txt,stage){
   const L=String(txt||'').split('\n').map(s=>s.trim()).filter(Boolean),res=[];
   const add=(name,status,detail,ev)=>res.push({name,status,detail,evidence:ev||[]});
   const words=txt.split(/\s+/).filter(Boolean).length;
   add('Length',words>150?'ok':'warn',words+' words extracted'+(words<150?' (very short or scanned PDF without text)':''));
-  const heads=[['Background',/background/i],['Problem statement',/problem\s+statement/i],['Objectives',/objectives?/i],['Design specifications',/(design\s+)?specifications?|requirements/i],['Constraints',/constraints?/i],['Engineering standards',/standards?/i],['Assumptions',/assumptions?/i],['Deliverables',/deliverables?/i],['Literature review',/literature\s+review/i],['Alternative designs',/alternative\s+design|conceptual\s+design/i],['Baseline design',/baseline/i],['Implementation',/implementation/i],['Validation',/validation|verification\s+experiments?/i],['Work plan',/work\s+plan|gantt|schedule/i],['References',/references|bibliography/i]];
+  const heads=[['Background',/background/i],['Problem statement',/problem\s+statement/i],['Objectives',/objectives?/i],['Design specifications',/(design\s+)?specifications?|requirements/i],['Constraints',/constraints?/i],['Engineering standards',/standards?/i],['Assumptions',/assumptions?/i],['Deliverables',/deliverables?/i],['Literature review',/literature\s+review/i],['Alternative designs',/alternative\s+design|conceptual\s+design/i],['Baseline design',/baseline/i],['Implementation',/implementation/i],['Validation',/validation|verification\s+experiments?/i],['Work plan',/work\s+plan|gantt|schedule/i],['Results',/results?|findings/i],['Conclusion',/conclusions?|discussion/i],['References',/references|bibliography/i]];
   const want=stage&&STAGE_SECS[stage]===undefined?null:(stage?STAGE_SECS[stage]:null);
+  const chs=chaptersOf(txt);add('Chapters detected',Object.keys(chs).length?'ok':'warn',Object.keys(chs).length?Object.keys(chs).map(k=>k+' '+chs[k]).join('; '):'no "Chapter N" headings found');
   heads.filter(([n])=>!want||want.includes(n)).forEach(([n,re])=>{const hit=L.find(l=>l.length<90&&re.test(l));add('Section: '+n,hit?'ok':'missing',hit?'heading found':'no heading found',hit?[hit]:[])});
   const si=L.findIndex(l=>l.length<60&&/(design\s+)?specifications?|requirements/i.test(l));
   const specs=si<0?[]:(()=>{const rest=L.slice(si+1,si+60);const e=rest.findIndex(l=>/^\d+\.\s+[A-Z][A-Za-z ]{2,40}$/.test(l));return e<0?rest:rest.slice(0,e)})().filter(l=>/\b(shall|should|must|will)\b|^\d+(\.\d+)*[ .)]/i.test(l)&&l.length<260);
@@ -71,6 +72,14 @@ function reqDl(id){const r=DB.evalreq.find(x=>x.id===id);dl('evaluation-'+teamNa
 
 // ---- Team import from a report title page (rule-based; the evaluator confirms every field)
 function normText(t){return String(t||'').replace(/\r/g,'').replace(/[ \t]+\n/g,'\n').replace(/\b([A-Z]) (?=[A-Z]{2,}\b)/g,'$1')}
+function chaptersOf(txt){const seen={};normText(txt).split('\n').forEach(l=>{const m=l.trim().match(/^chapter\s+(\d{1,2})\s*[:.\-]?\s+([A-Za-z][^\n.]{2,70}?)\s*(?:\.{2,}.*|\s+\d{1,3})?$/i);if(m&&!seen[m[1]])seen[m[1]]=m[2].replace(/\s*\.+\s*$/,'').trim()});return seen}
+function detectStage(txt){const low=normText(txt).slice(0,5000).toLowerCase();const ch=chaptersOf(txt),nums=Object.keys(ch).map(Number),mx=nums.length?Math.max(...nums):0,titles=Object.values(ch).join(' ').toLowerCase();
+  if(/final (project )?report/.test(low))return 'E';
+  if(/progress (update|report)/.test(low))return 'D';
+  if(mx>=4)return /conclusion|discussion|results?|impact/.test(titles)?'E':'D';
+  if(/conceptual design/.test(low.slice(0,1500))&&mx<3)return 'B';
+  if(mx&&mx<=3||/chapter/.test(low))return 'C';
+  return /problem (definition|statement)|design requirements/.test(low.slice(0,1500))?'A':'C'}
 function parseTitlePage(txt){
   const L=normText(txt).split('\n').map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean).slice(0,70);
   const clean=s=>s.replace(/_+/g,'').replace(/\s*[-\u2013]\s*/g,' - ').replace(/\s+/g,' ').trim();
@@ -99,7 +108,7 @@ function parseTitlePage(txt){
   const no=((L.join('\n').match(/team\s*(?:no\.?|number|#)?\s*[:\-.]*\s*_*\s*([A-Za-z]?\d{1,3})(?!\d)/i)||[])[1]||'');
   const im=L.join(' ').match(/\b(fall|spring|summer)\s*(\d{4})\s*(?:intake)?/i);const intake=im?(im[1][0].toUpperCase()+im[1].slice(1).toLowerCase()+' '+im[2]):'';
   const low=normText(txt).slice(0,4000).toLowerCase();
-  const stage=/final report|final project report/.test(low)?'E':/progress (update|report)/.test(low)?'D':/conceptual design/.test(low.slice(0,1200))?'B':/problem (definition|statement)|design requirements/.test(low.slice(0,1200))&&!/chapter/.test(low)?'A':'C';
+  const stage=detectStage(txt);
   return {title:clean(title),members:mem.join('\n'),advisor:adv,coadvisor:co,customer:cust,no,intake,stage,term:'ED'.includes(stage)?'Term 2':'Term 1'};
 }
 let IMP_TXT='',IMP_FILE='';
@@ -112,7 +121,7 @@ function importTeamModal(){
   <label><input type="checkbox" id="i_q" checked> Also queue an AI evaluation request for this report (supervisor mode)</label>
   <div class="toolbar"><button class="btn" id="i_save">Confirm and add team</button> <button class="btn" onclick="closeModal()">Cancel</button></div></div>`);
   $('#i_file').onchange=async e=>{const f=e.target.files[0];if(!f)return;IMP_FILE=f.name;$('#i_msg').textContent='Reading...';
-    try{IMP_TXT=await extractText(f);const p=parseTitlePage(IMP_TXT);$('#i_no').value=p.no;$('#i_title').value=p.title;$('#i_mem').value=p.members;$('#i_adv').value=p.advisor;$('#i_co').value=p.coadvisor;$('#i_cust').value=p.customer;$('#i_intake').value=p.intake;$('#i_stage').value=p.stage;$('#i_term').value=p.term;$('#i_form').style.display='';$('#i_msg').textContent='Extracted '+IMP_TXT.split(/\s+/).length+' words. Fields below are guesses from the title page.'}catch(x){$('#i_msg').textContent='Could not read: '+x.message}};
+    try{IMP_TXT=await extractText(f);const p=parseTitlePage(IMP_TXT);$('#i_no').value=p.no;$('#i_title').value=p.title;$('#i_mem').value=p.members;$('#i_adv').value=p.advisor;$('#i_co').value=p.coadvisor;$('#i_cust').value=p.customer;$('#i_intake').value=p.intake;$('#i_stage').value=p.stage;$('#i_term').value=p.term;$('#i_form').style.display='';const ch=chaptersOf(IMP_TXT);$('#i_msg').textContent='Extracted '+IMP_TXT.split(/\s+/).length+' words. Chapters found: '+(Object.keys(ch).length?Object.keys(ch).map(k=>k+' '+ch[k]).join('; '):'none')+'. Stage guessed from the chapters (1-3 = Term 1 report; 4 or more = progress update or final). Fields are guesses: check them.'}catch(x){$('#i_msg').textContent='Could not read: '+x.message}};
   $('#i_save').onclick=async()=>{const t={no:$('#i_no').value,title:$('#i_title').value,members:$('#i_mem').value,advisor:$('#i_adv').value,coadvisor:$('#i_co').value,customer:$('#i_cust').value,term:$('#i_term').value,intake:$('#i_intake').value,reg:'Pending',role:'Supervisor (own team)'};
     if(!t.title){$('#i_msg').textContent='Project title is required.';return}
     const before=DB.team.map(x=>x.id);if(!(await save('team',t)))return;const nt=DB.team.find(x=>!before.includes(x.id));const st=$('#i_stage').value;
