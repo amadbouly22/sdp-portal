@@ -2,7 +2,7 @@ const BANDS=n=>n>=9?'Exemplary (9-10)':n>=7?'Satisfactory (7-8)':n>=5?'Developin
 // groups: [name, weight, [criteria]]
 const STAGES={
  A:{name:'A - Identifying the Problem and Design Requirements',w:5,g:[['Report and presentation',5,['Background','Problem statement','Objectives: higher-level','Objectives: lower-level','Design specifications','Constraints','Engineering standards','Assumptions','Deliverables']]]},
- B:{name:'B - Conceptual Designs',w:8,g:[['Conceptual designs',8,['Literature review','Alternative designs (at least 3, different approaches)','Baseline design selection and justification']]]},
+ B:{name:'B - Conceptual Designs',w:8,g:[['EE499 F26 Term 1 Conceptual Design (official form)',8,['Lower Level Objectives','Design Specifications','Constraints and Engineering Standards','Literature Review','Alternative Designs','Baseline Design']]]},
  C:{name:'C - Term 1 Report and Presentation',w:27,g:[['Report and presentation',15,['Report: chapters 1-3 complete and consistent','Presentation']],['Advisor evaluation',12,['Advisor: teamwork and meetings','Advisor: progress and initiative']]]},
  D:{name:'D - Progress Update (Term 2)',w:5,g:[['Progress update',5,['A. Implementation: design calculations, justified baseline changes','B. Validation experiments: major parts and product, linked to specs','C. Work plan: achievable plan for remaining tasks']]]},
  E:{name:'E - Final Report and Presentation',w:55,g:[['Final report',22,['Implementation','Validation experiments','Discussion and conclusion']],['Presentation and prototype demo',15,['Presentation','Prototype demonstration']],['Advisor evaluation (Term 2)',18,['Advisor: work, initiative, teamwork']]]}
