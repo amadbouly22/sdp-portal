@@ -113,7 +113,7 @@ function parseTitlePage(txt){
   // members: name + 6-9 digit ID + optional specialty, after "By" / "Prepared by" / "Team members"
   const mem=[];const stop=/team\s*no|advisor|supervisor|customer|university|faculty|department|intake|^a senior design/i;
   let bi=byI>=0?byI:L.findIndex(l=>/^(prepared by|submitted by|team members?|students?|group members?)\s*:?/i.test(l));
-  const rowRe=/^(.+?)\s*[,|\-\u2013:]?\s*(\d{6,9})\s*[,|\-\u2013:]?\s*([A-Za-z]{2,12}(?:\s+[A-Za-z]{2,12}){0,2})?\s*$/;
+  const rowRe=/^(.+?)\s*[,|\-\u2013:]?\s*(\d{6,9})\s*[,|\-\u2013:]?\s*([A-Za-z][A-Za-z&/.]{1,13}(?:\s+[A-Za-z&/.]{1,13}){0,3})?\s*$/;
   if(bi>=0){const first=L[bi].replace(/^[^:]*:\s*/,'');const cand=(first&&first!==L[bi]?[first]:[]).concat(L.slice(bi+1,bi+8));
     for(const l of cand){if(stop.test(l))break;const m=l.match(rowRe);if(m){const nm=clean(m[1]);if(nm.length>2)mem.push(nm+', '+m[2]+(m[3]?', '+m[3].toUpperCase():''))}else if(/^[A-Za-z][A-Za-z.'\- ]{4,45}$/.test(l)&&l.split(' ').length>=2&&!HEAD.test(l))mem.push(clean(l))}}
   if(!mem.length)L.forEach(l=>{const m=l.match(rowRe);if(m&&clean(m[1]).split(' ').length>=2)mem.push(clean(m[1])+', '+m[2]+(m[3]?', '+m[3].toUpperCase():''))});
