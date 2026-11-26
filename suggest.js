@@ -43,6 +43,7 @@ function view_evals(m){
   else if(sg.state==='pending')status=`<div class="flag sug">Suggestion requested ${esc(dt)}, waiting for the draft. Sliders stay unset until then.</div>`;
   else if(sg.state==='noscores')status=`<div class="flag sug">A draft exists for this team, stage and mode, but it has no per-criterion scores. Open it under Evaluation Drafts, or request a new suggestion.</div>`;
   else status=`<div class="flag sug">No suggestion yet for this team, stage and mode. Sliders are unset (no default score).</div>`;
+  status=`<div class="hint" style="margin-bottom:6px">Report PDF: ${pdfBar(EV.team)}</div>`+status;
   const canReq=!saved&&(sg.state==='none'||sg.state==='noscores');
   const loadBtn=saved&&sg.state==='ready'?' <button class="btn ghost" id="loadsug">Load suggestion into form</button>':'';
   m.innerHTML=head('Evaluations','One evaluation per team per stage. Scores 0-10 per criterion, converted to the stage weight.')+
