@@ -97,10 +97,10 @@ function detectStage(txt){const low=normText(txt).slice(0,5000).toLowerCase();co
   return /problem (definition|statement)|design requirements/.test(low.slice(0,1500))?'A':'C'}
 function parseTitlePage(txt){
   const L=normText(txt).split('\n').map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean).slice(0,70);
-  const clean=s=>s.replace(/_+/g,'').replace(/\s*[-\u2013]\s*/g,' - ').replace(/\s+/g,' ').trim();
+  const clean=s=>s.replace(/_+/g,'').replace(/(\w)\s*-\s*(?=\w)/g,'$1\u0001').replace(/\s*[\u2013\u2014]\s*/g,' \u2013 ').replace(/\u0001/g,'-').replace(/\s+/g,' ').trim();
   const isPh=s=>/_{3,}/.test(s)&&clean(s).replace(/[:\-\s]|name|signature|date/gi,'').length<2;
   const HEAD=/^(project\s+)?(advisor|supervisor|customer|co-?\s*advisor|co-?\s*supervisor)\s*:?$/i;
-  const GEN=/project description|technical requirements|university|faculty|department|college|kingdom|ministry|senior design|ee\s*-?\s*499|course|semester|intake|report\b|submitted|prepared|supervis|advisor|customer|team\s*no|student|date|table of contents|abstract|fall|spring|summer|\b\d{4}\b|jeddah|saudi/i;
+  const GEN=/project description|technical requirements|university|faculty|department|college|kingdom|ministry|senior design|ee\s*-?\s*499|course|semester|intake|report\b|submitted|prepared|supervis|advisor|customer|team\s*no|student|^date\b|\bdate\s*:|table of contents|abstract|fall|spring|summer|\b\d{4}\b|jeddah|saudi/i;
   // title: lines before "By", else first plausible line
   let title='';const byI=L.findIndex(l=>/^by:?$/i.test(l));
   const ti=L.findIndex(l=>/^(project\s+title|title)\s*[:\-]/i.test(l));
@@ -110,7 +110,7 @@ function parseTitlePage(txt){
   // members: name + 6-9 digit ID + optional specialty, after "By" / "Prepared by" / "Team members"
   const mem=[];const stop=/team\s*no|advisor|supervisor|customer|university|faculty|department|intake|^a senior design/i;
   let bi=byI>=0?byI:L.findIndex(l=>/^(prepared by|submitted by|team members?|students?|group members?)\s*:?/i.test(l));
-  const rowRe=/^(.+?)\s*[,|\-\u2013:]?\s*(\d{6,9})\s*[,|\-\u2013:]?\s*([A-Za-z]{2,6})?\s*$/;
+  const rowRe=/^(.+?)\s*[,|\-\u2013:]?\s*(\d{6,9})\s*[,|\-\u2013:]?\s*([A-Za-z]{2,12}(?:\s+[A-Za-z]{2,12}){0,2})?\s*$/;
   if(bi>=0){const first=L[bi].replace(/^[^:]*:\s*/,'');const cand=(first&&first!==L[bi]?[first]:[]).concat(L.slice(bi+1,bi+8));
     for(const l of cand){if(stop.test(l))break;const m=l.match(rowRe);if(m){const nm=clean(m[1]);if(nm.length>2)mem.push(nm+', '+m[2]+(m[3]?', '+m[3].toUpperCase():''))}else if(/^[A-Za-z][A-Za-z.'\- ]{4,45}$/.test(l)&&l.split(' ').length>=2&&!HEAD.test(l))mem.push(clean(l))}}
   if(!mem.length)L.forEach(l=>{const m=l.match(rowRe);if(m&&clean(m[1]).split(' ').length>=2)mem.push(clean(m[1])+', '+m[2]+(m[3]?', '+m[3].toUpperCase():''))});
