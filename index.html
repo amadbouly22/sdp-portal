@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SDP Portal - KAU ECE</title><link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+<body>
+<div id="login" class="hide"><h1>SDP Portal</h1><div class="sub">EE 499 Senior Design Project - KAU ECE<br>Sign in</div>
+<label>Email</label><input type="text" id="lemail" value="amadbouly22@gmail.com">
+<label>Password</label><input type="password" id="lpass" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px">
+<div style="margin-top:16px"><button class="btn" id="lbtn">Sign in</button></div><div class="err" id="lerr"></div></div>
+<aside id="side" class="hide">
+<div class="brand"><b>SDP Portal</b><span>EE 499 Senior Design Project<br>KAU &middot; Faculty of Engineering &middot; ECE</span></div>
+<nav id="nav"></nav>
+<div class="userbox">Signed in as<br><b>Assoc. Prof. Ayman I. Madbouly</b><br><span class="chip">Supervisor / Evaluator</span><br><br><a href="#" id="logout" style="color:#cfe;font-size:12px">Sign out</a></div>
+</aside>
+<main id="main" class="hide"></main>
+<div class="modal" id="modal"><div class="box" id="mbox"></div></div>
+<script src="app.js"></script><script src="views.js"></script><script src="eval.js"></script>
+</body></html>
