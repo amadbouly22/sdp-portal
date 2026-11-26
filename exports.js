@@ -39,7 +39,7 @@ async function exportDocx(r,draft){
   const table=(heads,rows,widths)=>new D.Table({width:{size:widths.reduce((a,b)=>a+b,0),type:D.WidthType.DXA},columnWidths:widths,rows:[new D.TableRow({tableHeader:true,children:heads.map((h,i)=>cell(h,widths[i],true))})].concat(rows.map(rw=>new D.TableRow({cantSplit:false,children:rw.map((c,i)=>cell(c,widths[i]))})))});
   const kids=[];
   kids.push(new D.Paragraph({heading:D.HeadingLevel.TITLE,children:[new D.TextRun({text:'Evaluation report',bold:true,color:'0B4D3A'})]}));
-  kids.push(table(['Field','Value'],[['Team',M.team],['Stage',M.stage],['Mode',M.mode],['Draft status',M.status+' (AI-written draft; the evaluator decides)'],['Source file',M.file||'-'],['Exported',M.date]],[2400,10000]));
+  kids.push(table(['Field','Value'],[['Team',M.team],['Stage',M.stage],['Mode',M.mode],['Draft status',M.status+''],['Source file',M.file||'-'],['Exported',M.date]],[2400,10000]));
   kids.push(para('',{after:120}));
   if(P.intro.length){P.intro.forEach(t=>kids.push(para(t,{size:19,color:'555555'})))}
   const H=t=>new D.Paragraph({heading:D.HeadingLevel.HEADING_1,spacing:{before:260,after:100},children:[new D.TextRun({text:t,bold:true,color:'0B4D3A'})]});
@@ -59,7 +59,7 @@ async function exportXlsx(r,draft){
   await loadScript(EXCEL_URL);const P=parseReport(r,draft),M=reportMeta(r);const wb=new ExcelJS.Workbook();wb.creator='SDP Portal';
   const hdr=row=>{row.font={bold:true,color:{argb:'FFFFFFFF'}};row.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0B4D3A'}};row.alignment={vertical:'middle',wrapText:true}};
   const s1=wb.addWorksheet('Summary');s1.columns=[{width:40},{width:110}];
-  [['Team',M.team],['Stage',M.stage],['Mode',M.mode],['Draft status',M.status],['Source file',M.file||'-'],['Exported',M.date],['Note','AI-written draft. Scores are suggestions; the evaluator decides.']].forEach(x=>s1.addRow(x));
+  [['Team',M.team],['Stage',M.stage],['Mode',M.mode],['Draft status',M.status],['Source file',M.file||'-'],['Exported',M.date],['Note','Draft. Scores are suggestions; the evaluator decides.']].forEach(x=>s1.addRow(x));
   s1.getColumn(1).font={bold:true};
   if(P.criteria.length){const tot=P.criteria.reduce((s,c)=>s+(weighted(c)||0),0),S=STAGES[r.stage];s1.addRow(['Suggested marks (scored criteria only)',tot.toFixed(2)+' of '+S.w]);s1.addRow(['Unscored criteria',P.criteria.filter(c=>c.score==null).map(c=>c.criterion).join('; ')||'none'])}
   const ov=P.blocks['OVERALL IMPRESSION'];if(ov)s1.addRow(['Overall impression',ov]);if(P.summary)s1.addRow(['Comments (official form)',P.summary]);
