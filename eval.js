@@ -14,11 +14,7 @@ function teamTotals(tid){
   Object.keys(STAGES).forEach(st=>{const ev=DB.evaluation.find(e=>e.team===tid&&e.stage===st&&e.role!=='External evaluator');if(ev){const p=stagePoints(ev,st);out[st]=p.pts;if('ABC'.includes(st))t1+=p.pts;else t2+=p.pts}});
   return {out,t1,t2,all:t1+t2};
 }
-function flags(tid){const tt=teamTotals(tid),f=[];const done=s=>tt.out[s]!=null;
-  if(done('A')&&done('B')&&done('C')&&tt.t1/40*100<25)f.push(['bad','End of Term 1: '+(tt.t1/40*100).toFixed(1)+'% of Term 1 points, below the 25% failure threshold.']);
-  if(done('E')&&tt.all<50)f.push(['bad','End of Term 2: '+tt.all.toFixed(1)+' points, below the 50% failure threshold.']);
-  if(done('E')&&tt.all>=50)f.push(['good','Above 50%. IC grade applies only if a major component failed.']);
-  return f}
+function flags(tid){const tt=teamTotals(tid);return [['good','Marks so far: Term 1 '+tt.t1.toFixed(1)+' / 40, running total '+tt.all.toFixed(1)+' / 100.']]}
 // ---- DASHBOARD
 function view_dashboard(m){
   const cnt=(t,term)=>DB.meeting.filter(x=>x.team===t&&x.term===term).length;
