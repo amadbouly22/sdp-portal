@@ -8,7 +8,9 @@ function fieldHtml(f,v){
   return `<label>${esc(f.l)}</label>${inp}${f.hint?`<div class="hint">${esc(f.hint)}</div>`:''}`;
 }
 function readForm(fields){const o={};fields.forEach(f=>o[f.k]=document.getElementById('f_'+f.k).value);return o}
-function teamDefaults(tid){const t=DB.team.find(x=>x.id===tid);if(!t)return {};const d={};if(t.role==='Supervisor (own team)'||t.role==='External evaluator')d.role=t.role;if(t.pdf_stage&&typeof STAGES!=='undefined'&&STAGES[t.pdf_stage])d.stage=t.pdf_stage;if(t.term==='Term 1'||t.term==='Term 2')d.term=t.term;return d}
+function teamDefaults(tid,fromReq){const t=DB.team.find(x=>x.id===tid);if(!t)return {};const d={};if(t.role==='Supervisor (own team)'||t.role==='External evaluator')d.role=t.role;if(t.pdf_stage&&typeof STAGES!=='undefined'&&STAGES[t.pdf_stage])d.stage=t.pdf_stage;if(t.term==='Term 1'||t.term==='Term 2')d.term=t.term;
+  if(fromReq&&typeof MODES!=='undefined'){const rq=(DB.evalreq||[]).filter(r=>r.team===tid&&r.status!=='cancelled'&&(r.mode===MODES[0]||r.mode===MODES[1])).sort((a,b)=>String(a.created||'').localeCompare(String(b.created||''))).pop();if(rq){d.role=rq.mode===MODES[0]?'Supervisor (own team)':'External evaluator';if(rq.stage&&typeof STAGES!=='undefined'&&STAGES[rq.stage])d.stage=rq.stage;d.fromReq=rq.id}}
+  return d}
 function editRecord(kind,fields,title,id,after){
   const rec=id?DB[kind].find(x=>x.id===id):{};
   openModal(`<h3>${esc(title)}</h3>${fields.map(f=>fieldHtml(f,rec[f.k])).join('')}
