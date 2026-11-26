@@ -46,7 +46,7 @@ function view_aieval(m){
   m.innerHTML=head('AI Evaluation','Upload a team report, see rule-based pre-checks, then request a skill-format draft evaluation. Nothing is scored automatically: every draft is yours to accept or edit.')+
   `<div class="panel"><h2>New request</h2><div class="grid2">
   <div><label>Team</label><select id="a_team">${DB.team.map(t=>`<option value="${t.id}">Team ${esc(t.no)} - ${esc(t.title)}</option>`).join('')}</select></div>
-  <div><label>Stage</label><select id="a_stage">${Object.keys(STAGES).map(k=>`<option value="${k}">${esc(STAGES[k].name)}</option>`).join('')}</select></div>
+  <div><label>Stage</label><select id="a_stage">${Object.keys(STAGES).map(k=>`<option value="${k}" ${k==='C'?'selected':''}>${esc(STAGES[k].name)}</option>`).join('')}</select></div>
   <div><label>Mode</label><select id="a_mode">${MODES.slice(0,3).map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
   <div id="a_scale" class="hint" style="grid-column:1/-1"></div><div id="a_filebox"><label>Report file (PDF, DOCX or TXT)</label><input type="file" id="a_file" accept=".pdf,.docx,.txt,.md"></div></div>
   <label>Extracted text (edit if the extraction missed something)</label><textarea id="a_txt" rows="8" style="width:100%"></textarea>
@@ -129,7 +129,7 @@ function importTeamModal(){
   openModal(`<h2>Import team from a report</h2><div class="hint">Upload the report (PDF/DOCX). The title page is read in your browser; check every field before saving.</div>
   <input type="file" id="i_file" accept=".pdf,.docx,.txt"><div id="i_msg" class="hint"></div><div id="i_form" style="display:none">
   <label>Team no.</label><input id="i_no"><div class="hint" id="s_no"></div><label>Project title</label><input id="i_title"><div class="hint" id="s_title"></div><label>Members (one per line)</label><textarea id="i_mem" rows="4"></textarea><div class="hint" id="s_members"></div>
-  <label>Advisor</label><input id="i_adv"><div class="hint" id="s_advisor"></div><label>Co-advisor</label><input id="i_co"><div class="hint" id="s_coadvisor"></div><label>Customer</label><input id="i_cust"><div class="hint" id="s_customer"></div><label>Intake</label><input id="i_intake"><div class="hint" id="s_intake"></div><label>Report stage</label><select id="i_stage">${Object.keys(STAGES).map(k=>`<option value="${k}">${esc(STAGES[k].name)}</option>`).join('')}</select><div class="hint" id="s_stage"></div>
+  <label>Advisor</label><input id="i_adv"><div class="hint" id="s_advisor"></div><label>Co-advisor</label><input id="i_co"><div class="hint" id="s_coadvisor"></div><label>Customer</label><input id="i_cust"><div class="hint" id="s_customer"></div><label>Intake</label><input id="i_intake"><div class="hint" id="s_intake"></div><label>Report stage</label><select id="i_stage">${Object.keys(STAGES).map(k=>`<option value="${k}" ${k==='C'?'selected':''}>${esc(STAGES[k].name)}</option>`).join('')}</select><div class="hint" id="s_stage"></div>
   <label>Current term</label><select id="i_term"><option>Term 1</option><option>Term 2</option></select>
   <label><input type="checkbox" id="i_q" checked> Also queue an AI evaluation request for this report (supervisor mode)</label>
   <div class="toolbar"><button class="btn" id="i_save">Confirm and add team</button> <button class="btn" onclick="closeModal()">Cancel</button></div></div>`);
