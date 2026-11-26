@@ -4,7 +4,7 @@ const sb=supabase.createClient(SB_URL,SB_KEY);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let DB={idea:[],proposal:[],team:[],meeting:[],evaluation:[],document:[],evalreq:[],rubric:[]};
-const VIEWS=[['dashboard','Dashboard','\u25A3'],['ideas','Idea Bank','\u270E'],['proposals','Proposals','\uD83D\uDCC4'],['teams','Teams','\uD83D\uDC65'],['meetings','Meeting Minutes','\uD83D\uDCC5'],['evals','Evaluations','\u2713'],['docs','Reports & Files','\uD83D\uDCC1'],['aieval','AI Evaluation','\u2728'],['rubrics','Rubrics','\u2630'],['export','Export','\u21E9']];
+const VIEWS=[['dashboard','Dashboard','\u25A3'],['ideas','Idea Bank','\u270E'],['proposals','Proposals','\uD83D\uDCC4'],['teams','Teams','\uD83D\uDC65'],['meetings','Meeting Minutes','\uD83D\uDCC5'],['evals','Evaluations','\u2713'],['docs','Reports & Files','\uD83D\uDCC1'],['aieval','Evaluation Drafts','\u2728'],['rubrics','Rubrics','\u2630'],['export','Export','\u21E9']];
 async function loadAll(){
   const {data,error}=await sb.from('records').select('*').order('created_at');
   if(error){alert('Load error: '+error.message);return}
