@@ -19,7 +19,7 @@ function empty(n){return n?'':'<div class="hint" style="padding:14px">Nothing ye
 
 // ---- IDEAS
 const IDEA_F=[{k:'title',l:'Project title'},{k:'domain',l:'Domain',t:'select',o:['Embedded systems','Power & energy','Communications','Software & AI','Instrumentation','Control','Signal processing','Other']},
- {k:'by',l:'Proposed as',t:'select',o:['Customer','Supervisor']},{k:'status',l:'Status',t:'select',o:['Draft','Proposed','Approved','Assigned']},
+ {k:'by',l:'Proposed as',t:'select',o:['Customer','Supervisor','Customer + Supervisor']},{k:'status',l:'Status',t:'select',o:['Draft','Proposed','Approved','Assigned']},
  {k:'feas',l:'Feasibility (2 terms, 2-3 students)',t:'select',o:['High','Medium','Low']},{k:'team',l:'Assigned team (if any)',ph:'e.g. Team 4'},
  {k:'notes',l:'Notes: need, problem, approach ideas',t:'area',h:110}];
 function view_ideas(m){
@@ -31,7 +31,7 @@ function view_ideas(m){
   m.querySelectorAll('[data-p]').forEach(b=>b.onclick=async()=>{const r=DB.idea.find(x=>x.id===b.dataset.p);if(await save('proposal',{title:r.title,as:r.by,description:r.notes||'',status:'Draft',idea:r.id})){location.hash='proposals'}});
 }
 // ---- PROPOSALS (official format)
-const PROP_F=[{k:'title',l:'Project title'},{k:'as',l:'Writing as',t:'select',o:['Customer','Supervisor']},{k:'intake',l:'Intake',ph:'e.g. Spring 2026'},{k:'status',l:'Status',t:'select',o:['Draft','Submitted to SDP Committee','Approved']},
+const PROP_F=[{k:'title',l:'Project title'},{k:'as',l:'Writing as',t:'select',o:['Customer','Supervisor','Customer + Supervisor']},{k:'intake',l:'Intake',ph:'e.g. Spring 2026'},{k:'status',l:'Status',t:'select',o:['Draft','Submitted to SDP Committee','Approved']},
  {k:'description',l:'Project description',t:'area',h:150,hint:'Paragraph 1: the problem and need. Paragraph 2: open-ended complexity. State the need, not the method.'},
  {k:'requirements',l:'Technical requirements (one per line)',t:'area',h:150,hint:'Measurable, with numbers and units. Needs only, no methods or tools. No escape words (if, when, usually, typically).'},
  {k:'product',l:'Final product',t:'area'},{k:'courses',l:'Recommended courses (course: why)',t:'area',h:90},{k:'skills',l:'Recommended skills',t:'area'},{k:'details',l:'Additional details',t:'area'}];
