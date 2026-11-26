@@ -10,13 +10,15 @@ async function extractText(file){
 }
 const ESC=/\b(if|when|usually|typically|generally|etc\.?|and so on|as needed|approximately|fast|quickly|easy|user[- ]friendly|reliable|good|robust)\b/i;
 const UNIT=/\d+(\.\d+)?\s*(%|ms|s|sec|min|h|hours?|days?|months?|years?|hz|khz|mhz|ghz|v|mv|a|ma|w|mw|kw|wh|mah|m|cm|mm|km|kg|g|db|dbm|bps|kbps|mbps|gbps|sar|\$|usd|°c|c|lux|mb|gb|kb)\b/i;
-function preChecks(txt){
+const STAGE_SECS={A:['Background','Problem statement','Objectives','Design specifications','Constraints','Engineering standards','Assumptions','Deliverables'],B:['Literature review','Alternative designs','Baseline design','References'],C:null,D:['Implementation','Validation','Work plan','References'],E:null};
+function preChecks(txt,stage){
   const L=String(txt||'').split('\n').map(s=>s.trim()).filter(Boolean),res=[];
   const add=(name,status,detail,ev)=>res.push({name,status,detail,evidence:ev||[]});
   const words=txt.split(/\s+/).filter(Boolean).length;
   add('Length',words>150?'ok':'warn',words+' words extracted'+(words<150?' (very short or scanned PDF without text)':''));
   const heads=[['Background',/background/i],['Problem statement',/problem\s+statement/i],['Objectives',/objectives?/i],['Design specifications',/(design\s+)?specifications?|requirements/i],['Constraints',/constraints?/i],['Engineering standards',/standards?/i],['Assumptions',/assumptions?/i],['Deliverables',/deliverables?/i],['Literature review',/literature\s+review/i],['Alternative designs',/alternative\s+design|conceptual\s+design/i],['Baseline design',/baseline/i],['Implementation',/implementation/i],['Validation',/validation|verification\s+experiments?/i],['Work plan',/work\s+plan|gantt|schedule/i],['References',/references|bibliography/i]];
-  heads.forEach(([n,re])=>{const hit=L.find(l=>l.length<90&&re.test(l));add('Section: '+n,hit?'ok':'missing',hit?'heading found':'no heading found',hit?[hit]:[])});
+  const want=stage&&STAGE_SECS[stage]===undefined?null:(stage?STAGE_SECS[stage]:null);
+  heads.filter(([n])=>!want||want.includes(n)).forEach(([n,re])=>{const hit=L.find(l=>l.length<90&&re.test(l));add('Section: '+n,hit?'ok':'missing',hit?'heading found':'no heading found',hit?[hit]:[])});
   const si=L.findIndex(l=>l.length<60&&/(design\s+)?specifications?|requirements/i.test(l));
   const specs=si<0?[]:(()=>{const rest=L.slice(si+1,si+60);const e=rest.findIndex(l=>/^\d+\.\s+[A-Z][A-Za-z ]{2,40}$/.test(l));return e<0?rest:rest.slice(0,e)})().filter(l=>/\b(shall|should|must|will)\b|^\d+(\.\d+)*[ .)]/i.test(l)&&l.length<260);
   const noNum=specs.filter(l=>!UNIT.test(l)),esc=specs.filter(l=>ESC.test(l));
@@ -44,15 +46,17 @@ function view_aieval(m){
   <div><label>Team</label><select id="a_team">${DB.team.map(t=>`<option value="${t.id}">Team ${esc(t.no)} - ${esc(t.title)}</option>`).join('')}</select></div>
   <div><label>Stage</label><select id="a_stage">${Object.keys(STAGES).map(k=>`<option value="${k}">${esc(STAGES[k].name)}</option>`).join('')}</select></div>
   <div><label>Mode</label><select id="a_mode">${MODES.map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
-  <div><label>Report file (PDF, DOCX or TXT)</label><input type="file" id="a_file" accept=".pdf,.docx,.txt,.md"></div></div>
+  <div id="a_scale" class="hint" style="grid-column:1/-1"></div><div id="a_filebox"><label>Report file (PDF, DOCX or TXT)</label><input type="file" id="a_file" accept=".pdf,.docx,.txt,.md"></div></div>
   <label>Extracted text (edit if the extraction missed something)</label><textarea id="a_txt" rows="8" style="width:100%"></textarea>
   <div class="toolbar"><button class="btn" id="a_chk">Run pre-checks</button> <button class="btn" id="a_req">Request AI evaluation</button></div>
   <div id="a_out"></div></div>
   <div class="panel"><h2>Requests</h2>${reqs.length?`<table><tr><th>Date</th><th>Team</th><th>Stage</th><th>Mode</th><th>Status</th><th></th></tr>${reqs.map(r=>`<tr><td>${esc((r.created||'').slice(0,10))}</td><td>${esc(teamName(r.team))}</td><td>${esc(r.stage)}</td><td>${esc(r.mode)}</td><td><span class="chip">${esc(r.status)}</span></td><td><button class="btn sm" onclick="openReq('${r.id}')">Open</button></td></tr>`).join('')}</table>`:'<div class="hint">No requests yet.</div>'}</div>`;
   $('#a_file').onchange=async e=>{const f=e.target.files[0];if(!f)return;AI_FILE=f.name;$('#a_out').innerHTML='Extracting text...';try{AI_TXT=await extractText(f);$('#a_txt').value=AI_TXT;$('#a_out').innerHTML='Extracted '+AI_TXT.split(/\s+/).length+' words.'}catch(x){$('#a_out').innerHTML='<span style="color:#b42318">Could not read the file: '+esc(x.message)+'</span>'}};
-  $('#a_chk').onclick=()=>{$('#a_out').innerHTML=checksHtml(preChecks($('#a_txt').value))};
-  $('#a_req').onclick=async()=>{const txt=$('#a_txt').value.trim();if(!DB.team.length||txt.length<200){$('#a_out').innerHTML='<span style="color:#b42318">Select a team and provide the report text (at least 200 characters).</span>';return}
-    const st=$('#a_stage').value;const ok=await save('evalreq',{team:$('#a_team').value,stage:st,mode:$('#a_mode').value,file:AI_FILE,status:'pending',report_text:txt,rubric:rubricSnapshot(st),prechecks:preChecks(txt),draft:'',notes:''});
+  const modeUi=()=>{const mo=$('#a_mode').value,pr=mo===MODES[2];$('#a_filebox').style.display=pr?'none':'';$('#a_stage').disabled=pr;$('#a_chk').style.display=pr?'none':'';$('#a_scale').innerHTML=pr?'Proposal mode: describe the topic, area, student level and any constraints below. The assistant drafts 3 to 5 proposals in the skill template (no report needed).':'Rating scale: 9-10 Exemplary, 7-8 Satisfactory, 5-6 Developing, 2-4 Unsatisfactory, 0-1 Unacceptable. '+(mo===MODES[1]?'External mode: objective examiner tone, numeric rating per section.':'Supervisor mode: formative feedback, firm and constructive.')};
+  $('#a_mode').onchange=modeUi;modeUi();
+  $('#a_chk').onclick=()=>{$('#a_out').innerHTML=checksHtml(preChecks($('#a_txt').value,$('#a_stage').value))};
+  $('#a_req').onclick=async()=>{const txt=$('#a_txt').value.trim();const prop=$('#a_mode').value===MODES[2];if(!prop&&(!DB.team.length||txt.length<200)||prop&&txt.length<20){$('#a_out').innerHTML='<span style="color:#b42318">Select a team and provide the report text (at least 200 characters; for proposals describe the topic).</span>';return}
+    const st=prop?'-':$('#a_stage').value;const ok=await save('evalreq',{team:prop?'':$('#a_team').value,stage:st,mode:$('#a_mode').value,file:AI_FILE,status:'pending',report_text:txt,rubric:prop?null:rubricSnapshot(st),prechecks:prop?[]:preChecks(txt,st),draft:'',notes:''});
     if(ok){route();const o=document.querySelector('#a_out');if(o)o.innerHTML='<b style="color:#157347">Request saved as PENDING.</b> The draft evaluation will appear in the Requests list below.'}};
 }
 function openReq(id){const r=DB.evalreq.find(x=>x.id===id);if(!r)return;
