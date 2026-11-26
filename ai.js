@@ -99,7 +99,7 @@ async function reqSave(id,status){const r=DB.evalreq.find(x=>x.id===id);if(r&&r.
 function reqDl(id){const r=DB.evalreq.find(x=>x.id===id);dl('evaluation-'+teamName(r.team).replace(/\W+/g,'_')+'-stage'+r.stage+'.txt',`${teamName(r.team)}\nStage ${r.stage} - ${r.mode}\nStatus: ${r.status}\n\n${$('#r_draft')?$('#r_draft').value:r.draft}\n\nEvaluator notes:\n${$('#r_notes')?$('#r_notes').value:(r.notes||'')}\n`,'text/plain')}
 
 // ---- Team import from a report title page (rule-based; the evaluator confirms every field)
-function normText(t){return String(t||'').replace(/\r/g,'').replace(/[ \t]+\n/g,'\n').replace(/\b([A-Z]) (?=[A-Z]{2,}\b)/g,'$1')}
+function normText(t){return String(t||'').replace(/\r/g,'').replace(/[ \t]+\n/g,'\n').replace(/\b([B-HJ-Z]) (?=[A-Z]{2,}\b)/g,'$1')}
 function chaptersOf(txt){const seen={};normText(txt).split('\n').forEach(l=>{const m=l.trim().match(/^chapter\s+(\d{1,2})\s*[:.\-]?\s+([A-Za-z][^\n.]{2,70}?)\s*(?:\.{2,}.*|\s+\d{1,3})?$/i);if(m&&!seen[m[1]])seen[m[1]]=m[2].replace(/\s*\.+\s*$/,'').trim()});return seen}
 function detectStage(txt){const low=normText(txt).slice(0,5000).toLowerCase();const ch=chaptersOf(txt),nums=Object.keys(ch).map(Number),mx=nums.length?Math.max(...nums):0,titles=Object.values(ch).join(' ').toLowerCase();
   if(/final (project )?report/.test(low))return 'E';
