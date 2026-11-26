@@ -58,7 +58,7 @@ async function exportDocx(r,draft){
 async function exportXlsx(r,draft){
   await loadScript(EXCEL_URL);const P=parseReport(r,draft),M=reportMeta(r);const wb=new ExcelJS.Workbook();wb.creator='SDP Portal';
   const hdr=row=>{row.font={bold:true,color:{argb:'FFFFFFFF'}};row.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0B4D3A'}};row.alignment={vertical:'middle',wrapText:true}};
-  const s1=wb.addWorksheet('Summary');s1.columns=[{width:26},{width:110}];
+  const s1=wb.addWorksheet('Summary');s1.columns=[{width:40},{width:110}];
   [['Team',M.team],['Stage',M.stage],['Mode',M.mode],['Draft status',M.status],['Source file',M.file||'-'],['Exported',M.date],['Note','AI-written draft. Scores are suggestions; the evaluator decides.']].forEach(x=>s1.addRow(x));
   s1.getColumn(1).font={bold:true};
   if(P.criteria.length){const tot=P.criteria.reduce((s,c)=>s+(weighted(c)||0),0),S=STAGES[r.stage];s1.addRow(['Suggested marks (scored criteria only)',tot.toFixed(2)+' of '+S.w]);s1.addRow(['Unscored criteria',P.criteria.filter(c=>c.score==null).map(c=>c.criterion).join('; ')||'none'])}
@@ -70,7 +70,7 @@ async function exportXlsx(r,draft){
     const n=P.criteria.length+2;s2.addRow(['Total (scored criteria)','','','','',{formula:`SUM(F2:F${n-1})`}]).font={bold:true};s2.getCell('F'+n).numFmt='0.00';s2.views=[{state:'frozen',ySplit:1}]}
   if(P.table.length){const s3=wb.addWorksheet('Sections');s3.columns=[{header:'Section',width:28},{header:'Rating (0-10)',width:12},{header:'Strengths',width:60},{header:'Weaknesses',width:70},{header:'Recommendation',width:50}];hdr(s3.getRow(1));P.table.forEach(p=>{const row=s3.addRow([p[0],isNaN(+p[1])?p[1]:+p[1],p[2],p[3],p[4]]);row.alignment={vertical:'top',wrapText:true}});s3.views=[{state:'frozen',ySplit:1}]}
   if(wb.worksheets.length===1){const s=wb.addWorksheet('Draft');s.columns=[{width:140}];String(draft).split('\n').forEach(l=>s.addRow([l]))}
-  const buf=await wb.xlsx.writeBuffer();return {blob:new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),name:fname(r,'xlsx')};
+  wb.worksheets.forEach(w=>{w.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}});const buf=await wb.xlsx.writeBuffer();return {blob:new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),name:fname(r,'xlsx')};
 }
 function exportCsvReport(r,draft){const P=parseReport(r,draft),M=reportMeta(r);
   const rows=P.criteria.length?P.criteria.map(c=>({Team:M.team,Stage:M.stage,Mode:M.mode,Group:c.group,'Group marks':c.max,Criterion:c.criterion,'Score (0-10)':c.score==null?'':c.score,Marks:weighted(c)==null?'':weighted(c),Comment:c.comment})):P.table.map(p=>({Team:M.team,Stage:M.stage,Mode:M.mode,Section:p[0],'Rating (0-10)':p[1],Strengths:p[2],Weaknesses:p[3],Recommendation:p[4]}));
