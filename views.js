@@ -8,11 +8,13 @@ function fieldHtml(f,v){
   return `<label>${esc(f.l)}</label>${inp}${f.hint?`<div class="hint">${esc(f.hint)}</div>`:''}`;
 }
 function readForm(fields){const o={};fields.forEach(f=>o[f.k]=document.getElementById('f_'+f.k).value);return o}
+function teamDefaults(tid){const t=DB.team.find(x=>x.id===tid);if(!t)return {};const d={};if(t.role==='Supervisor (own team)'||t.role==='External evaluator')d.role=t.role;if(t.pdf_stage&&typeof STAGES!=='undefined'&&STAGES[t.pdf_stage])d.stage=t.pdf_stage;if(t.term==='Term 1'||t.term==='Term 2')d.term=t.term;return d}
 function editRecord(kind,fields,title,id,after){
   const rec=id?DB[kind].find(x=>x.id===id):{};
   openModal(`<h3>${esc(title)}</h3>${fields.map(f=>fieldHtml(f,rec[f.k])).join('')}
   <div style="margin-top:16px;text-align:right"><button class="btn ghost" onclick="closeModal()">Cancel</button> <button class="btn" id="savebtn">Save</button></div>`);
   $('#savebtn').onclick=async()=>{const o={...(id?rec:{}),...readForm(fields)};if(id)o.id=id;if(after)after(o);if(await save(kind,o)){closeModal();route()}};
+  if(kind==='meeting'&&$('#f_team')&&$('#f_term')){const sync=()=>{const d=teamDefaults($('#f_team').value);if(d.term)$('#f_term').value=d.term};if(!id)sync();$('#f_team').onchange=()=>{if(!id)sync()}}
 }
 function head(t,s,btn){return `<h1>${t}</h1><div class="sub">${s}</div>${btn?`<div class="toolbar">${btn}</div>`:''}`}
 function empty(n){return n?'':'<div class="hint" style="padding:14px">Nothing yet. Use the button above to add the first one.</div>'}
