@@ -11,7 +11,7 @@ async function extractRaw(file,n){
 }
 const ESC=/\b(if|when|usually|typically|generally|etc\.?|and so on|as needed|approximately|fast|quickly|easy|user[- ]friendly|reliable|good|robust)\b/i;
 const UNIT=/\d+(\.\d+)?\s*(%|ms|s|sec|min|h|hours?|days?|months?|years?|hz|khz|mhz|ghz|v|mv|a|ma|w|mw|kw|wh|mah|m|cm|mm|km|kg|g|db|dbm|bps|kbps|mbps|gbps|sar|\$|usd|°c|c|lux|mb|gb|kb)\b/i;
-const STAGE_SECS={A:['Background','Problem statement','Objectives','Design specifications','Constraints','Engineering standards','Assumptions','Deliverables'],B:['Literature review','Alternative designs','Baseline design','References'],C:null,D:['Implementation','Validation','Work plan','References'],E:null};
+const STAGE_SECS={A:['Background','Problem statement','Objectives','Design specifications','Constraints','Engineering standards','Assumptions','Deliverables'],B:['Literature review','Alternative designs','Baseline design','References'],C:['Background','Problem statement','Objectives','Design specifications','Constraints','Engineering standards','Assumptions','Deliverables','Literature review','Alternative designs','Baseline design','References'],D:['Implementation','Validation','Work plan','References'],E:null};
 function preChecks(txt,stage){
   const L=String(txt||'').split('\n').map(s=>s.trim()).filter(Boolean),res=[];
   const add=(name,status,detail,ev)=>res.push({name,status,detail,evidence:ev||[]});
