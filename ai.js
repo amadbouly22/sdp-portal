@@ -2,7 +2,8 @@
 const PDFJS='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',PDFW='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js',MAMMOTH='https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js';
 function loadScript(u){return new Promise((r,j)=>{if(document.querySelector('script[src="'+u+'"]'))return r();const s=document.createElement('script');s.src=u;s.onload=r;s.onerror=()=>j(new Error('load '+u));document.head.appendChild(s)})}
 async function extractText(file){
-  const n=file.name.toLowerCase();
+  const n=file.name.toLowerCase();return normText(await extractRaw(file,n));}
+async function extractRaw(file,n){
   if(n.endsWith('.pdf')){await loadScript(PDFJS);pdfjsLib.GlobalWorkerOptions.workerSrc=PDFW;const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;let t='';
     for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const c=await p.getTextContent();t+=c.items.map(x=>x.str+(x.hasEOL?'\n':' ')).join('')+'\n\n'}return t}
   if(n.endsWith('.docx')){await loadScript(MAMMOTH);const r=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});return r.value}
@@ -69,36 +70,50 @@ async function reqSave(id,status){const r=DB.evalreq.find(x=>x.id===id);const ok
 function reqDl(id){const r=DB.evalreq.find(x=>x.id===id);dl('evaluation-'+teamName(r.team).replace(/\W+/g,'_')+'-stage'+r.stage+'.txt',`${teamName(r.team)}\nStage ${r.stage} - ${r.mode}\nStatus: ${r.status}\n\n${$('#r_draft')?$('#r_draft').value:r.draft}\n\nEvaluator notes:\n${$('#r_notes')?$('#r_notes').value:(r.notes||'')}\n`,'text/plain')}
 
 // ---- Team import from a report title page (rule-based; the evaluator confirms every field)
+function normText(t){return String(t||'').replace(/\r/g,'').replace(/[ \t]+\n/g,'\n').replace(/\b([A-Z]) (?=[A-Z]{2,}\b)/g,'$1')}
 function parseTitlePage(txt){
-  const L=String(txt||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,60),head=L.join('\n');
-  const GEN=/project description|technical requirements|university|faculty|department|college|kingdom|ministry|senior design|ee\s*-?\s*499|course|semester|term\b|report$|^report|submitted|prepared|supervis|advisor|team|student|date|table of contents|abstract|fall|spring|summer|\d{4}/i;
-  let title='';const ti=L.findIndex(l=>/^(project\s+title|title)\s*[:\-]/i.test(l));
-  if(ti>=0){title=L[ti].replace(/^[^:\-]*[:\-]\s*/,'').trim()||L[ti+1]||''}
-  else{const i=L.findIndex(l=>l.length>=15&&l.length<150&&!GEN.test(l));if(i>=0){title=L[i];const n=L[i+1];if(n&&n.length<100&&!GEN.test(n)&&!/^\d/.test(n)&&/^[a-z(]|^(for|in|of|and|with|using|based)\b/i.test(n))title+=' '+n}}
-  const mem=[];const re=/^([A-Z][A-Za-z.'\-]+(?:\s+[A-Z][A-Za-z.'\-]+){1,4})\s*[,\-\u2013(|:]?\s*(\d{6,9})?\)?/;
-  const bi=L.findIndex(l=>/(prepared by|submitted by|team members?|students?|group members?|by)\s*:?\s*$/i.test(l)||/^(prepared by|submitted by|team members?|students?)\s*:/i.test(l));
-  if(bi>=0){const first=L[bi].replace(/^[^:]*:\s*/,'');const cand=(first&&!/by$/i.test(first)?[first]:[]).concat(L.slice(bi+1,bi+7));
-    for(const l of cand){if(/supervis|advisor|date|university|faculty|department/i.test(l))break;const m=l.match(re);if(m)mem.push(m[2]?m[1]+', '+m[2]:m[1])}}
-  if(!mem.length)L.forEach(l=>{const m=l.match(/^([A-Z][A-Za-z.'\-]+(?:\s+[A-Z][A-Za-z.'\-]+){1,3})\s*[,\-\u2013(|:]\s*(\d{7,9})/);if(m)mem.push(m[1]+', '+m[2])});
-  const adv=(head.match(/(?:supervisor|advisor|supervised by)\s*[:\-]\s*([^\n]{3,70})/i)||[])[1]||'';
-  const co=(head.match(/co-?\s*(?:supervisor|advisor)\s*[:\-]\s*([^\n]{3,70})/i)||[])[1]||'';
-  const no=(head.match(/team\s*(?:no\.?|number|#)?\s*[:\-]?\s*([A-Za-z]?\d{1,3})\b/i)||[])[1]||'';
-  const low=txt.slice(0,3000).toLowerCase();
-  const stage=/final report|final project report/.test(low)?'E':/progress/.test(low)?'D':/conceptual design/.test(low)?'B':/problem (definition|statement)|design requirements/.test(low.slice(0,1200))?'A':'C';
-  return {title:title.trim(),members:mem.join('\n'),advisor:adv.trim(),coadvisor:co.trim(),no,stage,term:'ED'.includes(stage)?'Term 2':'Term 1'};
+  const L=normText(txt).split('\n').map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean).slice(0,70);
+  const clean=s=>s.replace(/_+/g,'').replace(/\s*[-\u2013]\s*/g,' - ').replace(/\s+/g,' ').trim();
+  const isPh=s=>/_{3,}/.test(s)&&clean(s).replace(/[:\-\s]|name|signature|date/gi,'').length<2;
+  const HEAD=/^(project\s+)?(advisor|supervisor|customer|co-?\s*advisor|co-?\s*supervisor)\s*:?$/i;
+  const GEN=/project description|technical requirements|university|faculty|department|college|kingdom|ministry|senior design|ee\s*-?\s*499|course|semester|intake|report\b|submitted|prepared|supervis|advisor|customer|team\s*no|student|date|table of contents|abstract|fall|spring|summer|\b\d{4}\b|jeddah|saudi/i;
+  // title: lines before "By", else first plausible line
+  let title='';const byI=L.findIndex(l=>/^by:?$/i.test(l));
+  const ti=L.findIndex(l=>/^(project\s+title|title)\s*[:\-]/i.test(l));
+  if(ti>=0)title=L[ti].replace(/^[^:\-]*[:\-]\s*/,'').trim()||L[ti+1]||'';
+  else if(byI>0&&byI<=5){const parts=L.slice(0,byI).filter(l=>!GEN.test(l));title=parts.join(' ')}
+  if(!title){const i=L.findIndex(l=>l.length>=15&&l.length<150&&!GEN.test(l));if(i>=0){title=L[i];const n=L[i+1];if(n&&n.length<100&&!GEN.test(n)&&!/^\d/.test(n)&&/^[a-z(]|^(for|in|of|and|with|using|based)\b/i.test(n))title+=' '+n}}
+  // members: name + 6-9 digit ID + optional specialty, after "By" / "Prepared by" / "Team members"
+  const mem=[];const stop=/team\s*no|advisor|supervisor|customer|university|faculty|department|intake|^a senior design/i;
+  let bi=byI>=0?byI:L.findIndex(l=>/^(prepared by|submitted by|team members?|students?|group members?)\s*:?/i.test(l));
+  const rowRe=/^(.+?)\s*[,|\-\u2013:]?\s*(\d{6,9})\s*[,|\-\u2013:]?\s*([A-Za-z]{2,6})?\s*$/;
+  if(bi>=0){const first=L[bi].replace(/^[^:]*:\s*/,'');const cand=(first&&first!==L[bi]?[first]:[]).concat(L.slice(bi+1,bi+8));
+    for(const l of cand){if(stop.test(l))break;const m=l.match(rowRe);if(m){const nm=clean(m[1]);if(nm.length>2)mem.push(nm+', '+m[2]+(m[3]?', '+m[3].toUpperCase():''))}else if(/^[A-Za-z][A-Za-z.'\- ]{4,45}$/.test(l)&&l.split(' ').length>=2&&!HEAD.test(l))mem.push(clean(l))}}
+  if(!mem.length)L.forEach(l=>{const m=l.match(rowRe);if(m&&clean(m[1]).split(' ').length>=2)mem.push(clean(m[1])+', '+m[2]+(m[3]?', '+m[3].toUpperCase():''))});
+  // role lines: heading on its own line, value on the next line; or inline "Role: value"
+  const role=(re)=>{for(let i=0;i<L.length;i++){const l=L[i];let m=l.match(new RegExp('^(?:project\\s+)?'+re+'\\s*(?:name)?\\s*:\\s*(.+)$','i'));if(m&&!isPh(m[1])){const v=clean(m[1]);if(v.length>2)return v}
+      if(new RegExp('^(?:project\\s+)?'+re+'\\s*:?$','i').test(l)){const n=L[i+1];if(n&&!HEAD.test(n)&&!isPh(n)&&!/^(signature|date)/i.test(n)&&clean(n).length>2)return clean(n)}}return ''};
+  const co=role('co-?\\s*(?:advisor|supervisor)');
+  let adv=role('(?:advisor|supervisor)');if(adv===co)adv='';
+  const cust=role('customer');
+  const no=((L.join('\n').match(/team\s*(?:no\.?|number|#)?\s*[:\-.]*\s*_*\s*([A-Za-z]?\d{1,3})(?!\d)/i)||[])[1]||'');
+  const im=L.join(' ').match(/\b(fall|spring|summer)\s*(\d{4})\s*(?:intake)?/i);const intake=im?(im[1][0].toUpperCase()+im[1].slice(1).toLowerCase()+' '+im[2]):'';
+  const low=normText(txt).slice(0,4000).toLowerCase();
+  const stage=/final report|final project report/.test(low)?'E':/progress (update|report)/.test(low)?'D':/conceptual design/.test(low.slice(0,1200))?'B':/problem (definition|statement)|design requirements/.test(low.slice(0,1200))&&!/chapter/.test(low)?'A':'C';
+  return {title:clean(title),members:mem.join('\n'),advisor:adv,coadvisor:co,customer:cust,no,intake,stage,term:'ED'.includes(stage)?'Term 2':'Term 1'};
 }
 let IMP_TXT='',IMP_FILE='';
 function importTeamModal(){
   openModal(`<h2>Import team from a report</h2><div class="hint">Upload the report (PDF/DOCX). The title page is read in your browser; check every field before saving.</div>
   <input type="file" id="i_file" accept=".pdf,.docx,.txt"><div id="i_msg" class="hint"></div><div id="i_form" style="display:none">
   <label>Team no.</label><input id="i_no"><label>Project title</label><input id="i_title"><label>Members (one per line)</label><textarea id="i_mem" rows="4"></textarea>
-  <label>Advisor</label><input id="i_adv"><label>Co-advisor</label><input id="i_co"><label>Report stage</label><select id="i_stage">${Object.keys(STAGES).map(k=>`<option value="${k}">${esc(STAGES[k].name)}</option>`).join('')}</select>
+  <label>Advisor</label><input id="i_adv"><label>Co-advisor</label><input id="i_co"><label>Customer</label><input id="i_cust"><label>Intake</label><input id="i_intake"><label>Report stage</label><select id="i_stage">${Object.keys(STAGES).map(k=>`<option value="${k}">${esc(STAGES[k].name)}</option>`).join('')}</select>
   <label>Current term</label><select id="i_term"><option>Term 1</option><option>Term 2</option></select>
   <label><input type="checkbox" id="i_q" checked> Also queue an AI evaluation request for this report (supervisor mode)</label>
   <div class="toolbar"><button class="btn" id="i_save">Confirm and add team</button> <button class="btn" onclick="closeModal()">Cancel</button></div></div>`);
   $('#i_file').onchange=async e=>{const f=e.target.files[0];if(!f)return;IMP_FILE=f.name;$('#i_msg').textContent='Reading...';
-    try{IMP_TXT=await extractText(f);const p=parseTitlePage(IMP_TXT);$('#i_no').value=p.no;$('#i_title').value=p.title;$('#i_mem').value=p.members;$('#i_adv').value=p.advisor;$('#i_co').value=p.coadvisor;$('#i_stage').value=p.stage;$('#i_term').value=p.term;$('#i_form').style.display='';$('#i_msg').textContent='Extracted '+IMP_TXT.split(/\s+/).length+' words. Fields below are guesses from the title page.'}catch(x){$('#i_msg').textContent='Could not read: '+x.message}};
-  $('#i_save').onclick=async()=>{const t={no:$('#i_no').value,title:$('#i_title').value,members:$('#i_mem').value,advisor:$('#i_adv').value,coadvisor:$('#i_co').value,customer:'',term:$('#i_term').value,intake:'',reg:'Pending',role:'Supervisor (own team)'};
+    try{IMP_TXT=await extractText(f);const p=parseTitlePage(IMP_TXT);$('#i_no').value=p.no;$('#i_title').value=p.title;$('#i_mem').value=p.members;$('#i_adv').value=p.advisor;$('#i_co').value=p.coadvisor;$('#i_cust').value=p.customer;$('#i_intake').value=p.intake;$('#i_stage').value=p.stage;$('#i_term').value=p.term;$('#i_form').style.display='';$('#i_msg').textContent='Extracted '+IMP_TXT.split(/\s+/).length+' words. Fields below are guesses from the title page.'}catch(x){$('#i_msg').textContent='Could not read: '+x.message}};
+  $('#i_save').onclick=async()=>{const t={no:$('#i_no').value,title:$('#i_title').value,members:$('#i_mem').value,advisor:$('#i_adv').value,coadvisor:$('#i_co').value,customer:$('#i_cust').value,term:$('#i_term').value,intake:$('#i_intake').value,reg:'Pending',role:'Supervisor (own team)'};
     if(!t.title){$('#i_msg').textContent='Project title is required.';return}
     const before=DB.team.map(x=>x.id);if(!(await save('team',t)))return;const nt=DB.team.find(x=>!before.includes(x.id));const st=$('#i_stage').value;
     if($('#i_q').checked&&nt&&IMP_TXT.length>=200)await save('evalreq',{team:nt.id,stage:st,mode:MODES[0],file:IMP_FILE,status:'pending',report_text:IMP_TXT,rubric:rubricSnapshot(st),prechecks:preChecks(IMP_TXT,st),draft:'',notes:''});
