@@ -15,12 +15,19 @@ function teamTotals(tid){
   return {out,t1,t2,all:t1+t2};
 }
 function flags(tid){const tt=teamTotals(tid);return [['good','Marks so far: Term 1 '+tt.t1.toFixed(1)+' / 40, running total '+tt.all.toFixed(1)+' / 100.']]}
+function dashNotes(tid){const out=[];const evs=DB.evaluation.filter(e=>e.team===tid&&e.stage==='C');
+ const sup=evs.find(e=>e.role!=='External evaluator'),ext=evs.find(e=>e.role==='External evaluator');
+ if(sup){const a=((sup.scores||{})[1]||[]);if(a.length===0||a.every(x=>x==null))out.push(['warn','Advisor part (12 pts) of Stage C not scored yet.'])}
+ if(ext){const sc=((ext.scores||{})[0]||[]).map(x=>+(x==null?0:x));const p=sc.length?sc.reduce((a,b)=>a+b,0)/sc.length/10*15:0;out.push(['good','External evaluation saved: '+p.toFixed(1)+' / 15 (not counted in this team\'s totals).'])}
+ const rq=(DB.evalreq||[]).find(r=>r.team===tid&&r.status==='draft-ready');
+ if(rq&&!sup&&!ext)out.push(['warn','Draft evaluation ready in Evaluation Drafts. Not saved, so no marks yet.']);
+ return out}
 // ---- DASHBOARD
 function view_dashboard(m){
   const cnt=(t,term)=>DB.meeting.filter(x=>x.team===t&&x.term===term).length;
   m.innerHTML=head('Dashboard','Overview of teams, minutes and evaluations.')+
   `<div class="cards"><div class="card"><div class="n">${DB.team.length}</div><div class="l">Teams</div></div><div class="card"><div class="n">${DB.idea.length}</div><div class="l">Ideas in bank</div></div><div class="card"><div class="n">${DB.proposal.length}</div><div class="l">Proposals</div></div><div class="card"><div class="n">${DB.meeting.length}</div><div class="l">Meeting minutes logged</div></div><div class="card"><div class="n">${DB.evaluation.length}</div><div class="l">Evaluations saved</div></div></div>
-  <div class="panel"><h2>Teams</h2><table><tr><th>Team</th><th>Project</th><th>Term</th><th>Minutes (this term)</th><th>Term 1 pts</th><th>Total pts</th><th>Report PDF</th><th>Alerts</th></tr>${DB.team.map(t=>{const tt=teamTotals(t.id),c=cnt(t.id,t.term),fl=flags(t.id);return `<tr><td><b>${esc(t.no)}</b></td><td>${esc(t.title)}</td><td>${esc(t.term)}</td><td>${c}/6${c<6?' <span class="badge b-a">below 6</span>':''}<div class="prog"><i style="width:${Math.min(100,c/6*100)}%"></i></div></td><td>${tt.t1.toFixed(1)} / 40</td><td>${tt.all.toFixed(1)} / 100</td><td>${pdfBar(t.id)}</td><td>${fl.map(x=>`<div class="flag ${x[0]}">${esc(x[1])}</div>`).join('')}</td></tr>`}).join('')}</table>${empty(DB.team.length)}</div>
+  <div class="panel"><h2>Teams</h2><table><tr><th>Team</th><th>Project</th><th>Term</th><th>Minutes (this term)</th><th>Term 1 pts</th><th>Total pts</th><th>Report PDF</th><th>Alerts</th></tr>${DB.team.map(t=>{const tt=teamTotals(t.id),c=cnt(t.id,t.term),fl=flags(t.id).concat(dashNotes(t.id));return `<tr><td><b>${esc(t.no)}</b></td><td>${esc(t.title)}</td><td>${esc(t.term)}</td><td>${c}/6${c<6?' <span class="badge b-a">below 6</span>':''}<div class="prog"><i style="width:${Math.min(100,c/6*100)}%"></i></div></td><td>${tt.t1.toFixed(1)} / 40</td><td>${tt.all.toFixed(1)} / 100</td><td>${pdfBar(t.id)}</td><td>${fl.map(x=>`<div class="flag ${x[0]}">${esc(x[1])}</div>`).join('')}</td></tr>`}).join('')}</table>${empty(DB.team.length)}</div>
   <div class="panel"><h2>Stages and weights</h2>${Object.keys(STAGES).map(k=>`<div class="kpi"><span>${STAGES[k].name}</span><b>${STAGES[k].w}%</b></div>`).join('')}<div class="hint" style="margin-top:8px">Fail rules: below 25% at end of Term 1, below 50% at end of Term 2, or an adverse report. IC grade at 50% or more with a failed major component. No late submissions (50% deduction exception via advisor and committee).</div></div>`;
 }
 // ---- EVALUATIONS
