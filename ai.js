@@ -47,7 +47,7 @@ async function reqAttach(id){const inp=document.createElement('input');inp.type=
 const pdfChip=r=>r.team||r.mode?(r.pdf_path?'<span class="chip" title="Original PDF stored">PDF</span>':'<span class="chip" style="background:#fde8e8;color:#b42318" title="No original PDF stored: figures cannot be checked">no PDF</span>'):'';
 function view_aieval(m){
   const reqs=(DB.evalreq||[]).slice().reverse();
-  m.innerHTML=head('Evaluation Drafts','Upload a team report, see rule-based pre-checks, then request a skill-format draft evaluation. Nothing is scored automatically: every draft is yours to accept or edit.')+
+  m.innerHTML=head('Evaluation Drafts','Upload a team report, see rule-based pre-checks, then request a skill-format draft evaluation. No mark is final: every draft is yours to accept or edit.')+
   `<div class="panel"><h2>New request</h2><div class="grid2">
   <div><label>Team</label><select id="a_team">${DB.team.map(t=>`<option value="${t.id}">Team ${esc(t.no)} - ${esc(t.title)}</option>`).join('')}</select></div>
   <div><label>Stage</label><select id="a_stage">${Object.keys(STAGES).map(k=>`<option value="${k}" ${k==='C'?'selected':''}>${esc(STAGES[k].name)}</option>`).join('')}</select></div>
