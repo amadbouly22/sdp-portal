@@ -28,7 +28,7 @@ function sugSource(team,stage){ // report text available for this team and stage
 function descOf(st,c){const d=(window.FORM_DESC||{})[st];if(!d||!d[c])return '';return '<details class="fdesc"><summary>Official form descriptors</summary>'+d[c].map((t,i)=>'<div><b>'+FORM_BANDS[i]+'</b>: '+esc(t)+'</div>').join('')+'</details>'}
 function view_evals(m){
   if(!DB.team.length){m.innerHTML=head('Evaluations','Add a team first.')+'<div class="panel">Go to Teams and add a team.</div>';return}
-  if(!EV.team||!DB.team.find(t=>t.id===EV.team)){EV.team=DB.team[0].id;Object.assign(EV,teamDefaults(EV.team))}
+  if(!EV.team||!DB.team.find(t=>t.id===EV.team)){EV.team=DB.team[0].id;const dd=teamDefaults(EV.team,true);delete dd.fromReq;Object.assign(EV,dd)}
   const S=STAGES[EV.stage];
   const saved=DB.evaluation.find(e=>e.team===EV.team&&e.stage===EV.stage&&e.role===EV.role);
   const sg=sugFind(EV.team,EV.stage,EV.role);
@@ -60,7 +60,7 @@ function view_evals(m){
   m.querySelectorAll('.rng').forEach(r=>r.oninput=()=>{r.dataset.unset='0';r.classList.remove('unset');r.nextSibling.textContent=r.value;r.parentNode.nextSibling.textContent=BANDS(+r.value);const b=r.parentNode.previousSibling;if(b&&b.querySelector){const t=b.querySelector('.sugb');if(t){t.textContent='EDITED';t.classList.add('ed')}}recalc()});
   m.querySelectorAll('textarea[data-cg]').forEach(t=>t.addEventListener('input',()=>{const l=t.previousSibling&&t.previousSibling.previousSibling&&t.previousSibling.previousSibling.previousSibling;const b=l&&l.querySelector&&l.querySelector('.sugb');if(b){b.textContent='EDITED';b.classList.add('ed')}}));
   recalc();
-  $('#et').onchange=e=>{EV.team=e.target.value;Object.assign(EV,teamDefaults(EV.team));route()};$('#es').onchange=e=>{EV.stage=e.target.value;route()};$('#er').onchange=e=>{EV.role=e.target.value;route()};
+  $('#et').onchange=e=>{EV.team=e.target.value;const dd=teamDefaults(EV.team,true);delete dd.fromReq;Object.assign(EV,dd);route()};$('#es').onchange=e=>{EV.stage=e.target.value;route()};$('#er').onchange=e=>{EV.role=e.target.value;route()};
   const collect=()=>{const scores={},comments={};S.g.forEach((g,gi)=>{scores[gi]=[...m.querySelectorAll(`.rng[data-g="${gi}"]`)].map(x=>x.dataset.unset==='1'?null:+x.value);comments[gi]=g[2].map((_,ci)=>m.querySelector(`[data-cg="${gi}"][data-cc="${ci}"]`).value)});return {team:EV.team,stage:EV.stage,role:EV.role,scores,comments,summary:$('#sum').value,date:new Date().toISOString().slice(0,10)}};
   $('#saveev').onclick=async()=>{const o0=collect();const o=saved&&saved.id?{...saved,...o0}:o0;if(o.scores&&Object.values(o.scores).flat().some(x=>x==null)&&!confirm('Some criteria are not scored. They count as 0 in the total. Commit anyway?'))return;if(saved&&saved.id)o.id=saved.id;if(useSug){o.committed=true;o.from_suggestion=sg.req.id}if(await save('evaluation',o))route()};
   if($('#reqsug'))$('#reqsug').onclick=async()=>{const s=sugSource(EV.team,EV.stage);const msg=$('#sugmsg');
