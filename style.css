@@ -1,3 +1,4 @@
+
 :root{--green:#0b4d3a;--green2:#0f6a4e;--gold:#c9a227;--bg:#f4f6f5;--ink:#1d2521;--mut:#6b7670;--line:#dde4e0;--red:#b3261e;--amber:#a05a00;--ok:#1b7f4b}
 *{box-sizing:border-box;margin:0}
 body{font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);display:flex;min-height:100vh}
@@ -65,3 +66,8 @@ textarea{min-height:74px;resize:vertical}
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
 td .btn{margin-right:4px}
 .scorebox{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0}
+
+.flag.sug{background:#fff4d6;color:#7a5200;border:1px solid #e6c15a}
+.badge.sugb{background:#fff4d6;color:#7a5200;border:1px solid #e6c15a}
+.badge.sugb.ed{background:#e2f3ea;color:#1b7f4b;border-color:#9ccfb2}
+.rng.unset{opacity:.45}
