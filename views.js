@@ -12,7 +12,7 @@ function editRecord(kind,fields,title,id,after){
   const rec=id?DB[kind].find(x=>x.id===id):{};
   openModal(`<h3>${esc(title)}</h3>${fields.map(f=>fieldHtml(f,rec[f.k])).join('')}
   <div style="margin-top:16px;text-align:right"><button class="btn ghost" onclick="closeModal()">Cancel</button> <button class="btn" id="savebtn">Save</button></div>`);
-  $('#savebtn').onclick=async()=>{const o=readForm(fields);if(id)o.id=id;if(after)after(o);if(await save(kind,o)){closeModal();route()}};
+  $('#savebtn').onclick=async()=>{const o={...(id?rec:{}),...readForm(fields)};if(id)o.id=id;if(after)after(o);if(await save(kind,o)){closeModal();route()}};
 }
 function head(t,s,btn){return `<h1>${t}</h1><div class="sub">${s}</div>${btn?`<div class="toolbar">${btn}</div>`:''}`}
 function empty(n){return n?'':'<div class="hint" style="padding:14px">Nothing yet. Use the button above to add the first one.</div>'}
