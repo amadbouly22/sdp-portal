@@ -18,7 +18,7 @@ function preChecks(txt){
   const heads=[['Background',/background/i],['Problem statement',/problem\s+statement/i],['Objectives',/objectives?/i],['Design specifications',/(design\s+)?specifications?|requirements/i],['Constraints',/constraints?/i],['Engineering standards',/standards?/i],['Assumptions',/assumptions?/i],['Deliverables',/deliverables?/i],['Literature review',/literature\s+review/i],['Alternative designs',/alternative\s+design|conceptual\s+design/i],['Baseline design',/baseline/i],['Implementation',/implementation/i],['Validation',/validation|verification\s+experiments?/i],['Work plan',/work\s+plan|gantt|schedule/i],['References',/references|bibliography/i]];
   heads.forEach(([n,re])=>{const hit=L.find(l=>l.length<90&&re.test(l));add('Section: '+n,hit?'ok':'missing',hit?'heading found':'no heading found',hit?[hit]:[])});
   const si=L.findIndex(l=>l.length<60&&/(design\s+)?specifications?|requirements/i.test(l));
-  const specs=si<0?[]:L.slice(si+1,si+40).filter(l=>/\b(shall|should|must|will)\b|^\d+(\.\d+)*[ .)]/i.test(l)&&l.length<260);
+  const specs=si<0?[]:(()=>{const rest=L.slice(si+1,si+60);const e=rest.findIndex(l=>/^\d+\.\s+[A-Z][A-Za-z ]{2,40}$/.test(l));return e<0?rest:rest.slice(0,e)})().filter(l=>/\b(shall|should|must|will)\b|^\d+(\.\d+)*[ .)]/i.test(l)&&l.length<260);
   const noNum=specs.filter(l=>!UNIT.test(l)),esc=specs.filter(l=>ESC.test(l));
   add('Specs measurable (number + unit)',specs.length?(noNum.length?'flag':'ok'):'warn',specs.length?(specs.length-noNum.length)+' of '+specs.length+' spec lines have a number and unit':'no spec lines found',noNum.slice(0,6));
   add('Escape / vague words in specs',esc.length?'flag':'ok',esc.length+' spec lines with escape or vague words',esc.slice(0,6));
@@ -51,9 +51,9 @@ function view_aieval(m){
   <div class="panel"><h2>Requests</h2>${reqs.length?`<table><tr><th>Date</th><th>Team</th><th>Stage</th><th>Mode</th><th>Status</th><th></th></tr>${reqs.map(r=>`<tr><td>${esc((r.created||'').slice(0,10))}</td><td>${esc(teamName(r.team))}</td><td>${esc(r.stage)}</td><td>${esc(r.mode)}</td><td><span class="chip">${esc(r.status)}</span></td><td><button class="btn sm" onclick="openReq('${r.id}')">Open</button></td></tr>`).join('')}</table>`:'<div class="hint">No requests yet.</div>'}</div>`;
   $('#a_file').onchange=async e=>{const f=e.target.files[0];if(!f)return;AI_FILE=f.name;$('#a_out').innerHTML='Extracting text...';try{AI_TXT=await extractText(f);$('#a_txt').value=AI_TXT;$('#a_out').innerHTML='Extracted '+AI_TXT.split(/\s+/).length+' words.'}catch(x){$('#a_out').innerHTML='<span style="color:#b42318">Could not read the file: '+esc(x.message)+'</span>'}};
   $('#a_chk').onclick=()=>{$('#a_out').innerHTML=checksHtml(preChecks($('#a_txt').value))};
-  $('#a_req').onclick=async()=>{const txt=$('#a_txt').value.trim();if(!DB.team.length||txt.length<200){alert('Select a team and provide the report text (at least 200 characters).');return}
+  $('#a_req').onclick=async()=>{const txt=$('#a_txt').value.trim();if(!DB.team.length||txt.length<200){$('#a_out').innerHTML='<span style="color:#b42318">Select a team and provide the report text (at least 200 characters).</span>';return}
     const st=$('#a_stage').value;const ok=await save('evalreq',{team:$('#a_team').value,stage:st,mode:$('#a_mode').value,file:AI_FILE,status:'pending',report_text:txt,rubric:rubricSnapshot(st),prechecks:preChecks(txt),draft:'',notes:''});
-    if(ok){alert('Request saved as PENDING. The assistant will write the draft evaluation and it will appear here.');route()}};
+    if(ok){route();const o=document.querySelector('#a_out');if(o)o.innerHTML='<b style="color:#157347">Request saved as PENDING.</b> The draft evaluation will appear in the Requests list below.'}};
 }
 function openReq(id){const r=DB.evalreq.find(x=>x.id===id);if(!r)return;
   openModal(`<h2>${esc(teamName(r.team))} - Stage ${esc(r.stage)} - ${esc(r.mode)}</h2><div class="hint">Status: <b>${esc(r.status)}</b>${r.file?' | file: '+esc(r.file):''}</div>
