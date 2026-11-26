@@ -6,7 +6,7 @@ async function extractText(file){
   if(n.endsWith('.pdf')){await loadScript(PDFJS);pdfjsLib.GlobalWorkerOptions.workerSrc=PDFW;const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;let t='';
     for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const c=await p.getTextContent();t+=c.items.map(x=>x.str+(x.hasEOL?'\n':' ')).join('')+'\n\n'}return t}
   if(n.endsWith('.docx')){await loadScript(MAMMOTH);const r=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});return r.value}
-  return await file.text();
+  return new TextDecoder().decode(await file.arrayBuffer());
 }
 const ESC=/\b(if|when|usually|typically|generally|etc\.?|and so on|as needed|approximately|fast|quickly|easy|user[- ]friendly|reliable|good|robust)\b/i;
 const UNIT=/\d+(\.\d+)?\s*(%|ms|s|sec|min|h|hours?|days?|months?|years?|hz|khz|mhz|ghz|v|mv|a|ma|w|mw|kw|wh|mah|m|cm|mm|km|kg|g|db|dbm|bps|kbps|mbps|gbps|sar|\$|usd|°c|c|lux|mb|gb|kb)\b/i;
@@ -67,3 +67,41 @@ function openReq(id){const r=DB.evalreq.find(x=>x.id===id);if(!r)return;
   <div class="toolbar">${r.draft?`<button class="btn" onclick="reqSave('${id}','accepted')">Save as accepted</button> <button class="btn" onclick="reqSave('${id}','draft')">Save edits</button> <button class="btn" onclick="reqDl('${id}')">Export</button> `:''}<button class="btn" onclick="closeModal()">Close</button></div>`)}
 async function reqSave(id,status){const r=DB.evalreq.find(x=>x.id===id);const ok=await save('evalreq',{...r,id,draft:$('#r_draft').value,notes:$('#r_notes').value,status:status==='accepted'?'accepted':(r.status==='accepted'?'accepted':'draft-edited')});if(ok){closeModal();route()}}
 function reqDl(id){const r=DB.evalreq.find(x=>x.id===id);dl('evaluation-'+teamName(r.team).replace(/\W+/g,'_')+'-stage'+r.stage+'.txt',`${teamName(r.team)}\nStage ${r.stage} - ${r.mode}\nStatus: ${r.status}\n\n${$('#r_draft')?$('#r_draft').value:r.draft}\n\nEvaluator notes:\n${$('#r_notes')?$('#r_notes').value:(r.notes||'')}\n`,'text/plain')}
+
+// ---- Team import from a report title page (rule-based; the evaluator confirms every field)
+function parseTitlePage(txt){
+  const L=String(txt||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,60),head=L.join('\n');
+  const GEN=/university|faculty|department|college|kingdom|ministry|senior design|ee\s*-?\s*499|course|semester|term\b|report$|^report|submitted|prepared|supervis|advisor|team|student|date|table of contents|abstract|fall|spring|summer|\d{4}/i;
+  let title='';const ti=L.findIndex(l=>/^(project\s+title|title)\s*[:\-]/i.test(l));
+  if(ti>=0){title=L[ti].replace(/^[^:\-]*[:\-]\s*/,'').trim()||L[ti+1]||''}
+  else{const i=L.findIndex(l=>l.length>=15&&l.length<150&&!GEN.test(l));if(i>=0){title=L[i];const n=L[i+1];if(n&&n.length<100&&!GEN.test(n)&&!/^\d/.test(n)&&/^[a-z(]|^(for|in|of|and|with|using|based)\b/i.test(n))title+=' '+n}}
+  const mem=[];const re=/^([A-Z][A-Za-z.'\-]+(?:\s+[A-Z][A-Za-z.'\-]+){1,4})\s*[,\-\u2013(|:]?\s*(\d{6,9})?\)?/;
+  const bi=L.findIndex(l=>/(prepared by|submitted by|team members?|students?|group members?|by)\s*:?\s*$/i.test(l)||/^(prepared by|submitted by|team members?|students?)\s*:/i.test(l));
+  if(bi>=0){const first=L[bi].replace(/^[^:]*:\s*/,'');const cand=(first&&!/by$/i.test(first)?[first]:[]).concat(L.slice(bi+1,bi+7));
+    for(const l of cand){if(/supervis|advisor|date|university|faculty|department/i.test(l))break;const m=l.match(re);if(m)mem.push(m[2]?m[1]+', '+m[2]:m[1])}}
+  if(!mem.length)L.forEach(l=>{const m=l.match(/^([A-Z][A-Za-z.'\-]+(?:\s+[A-Z][A-Za-z.'\-]+){1,3})\s*[,\-\u2013(|:]\s*(\d{7,9})/);if(m)mem.push(m[1]+', '+m[2])});
+  const adv=(head.match(/(?:supervisor|advisor|supervised by)\s*[:\-]\s*([^\n]{3,70})/i)||[])[1]||'';
+  const co=(head.match(/co-?\s*(?:supervisor|advisor)\s*[:\-]\s*([^\n]{3,70})/i)||[])[1]||'';
+  const no=(head.match(/team\s*(?:no\.?|number|#)?\s*[:\-]?\s*([A-Za-z]?\d{1,3})\b/i)||[])[1]||'';
+  const low=txt.slice(0,3000).toLowerCase();
+  const stage=/final report|final project report/.test(low)?'E':/progress/.test(low)?'D':/conceptual design/.test(low)?'B':/problem (definition|statement)|design requirements/.test(low.slice(0,1200))?'A':'C';
+  return {title:title.trim(),members:mem.join('\n'),advisor:adv.trim(),coadvisor:co.trim(),no,stage,term:'ED'.includes(stage)?'Term 2':'Term 1'};
+}
+let IMP_TXT='',IMP_FILE='';
+function importTeamModal(){
+  openModal(`<h2>Import team from a report</h2><div class="hint">Upload the report (PDF/DOCX). The title page is read in your browser; check every field before saving.</div>
+  <input type="file" id="i_file" accept=".pdf,.docx,.txt"><div id="i_msg" class="hint"></div><div id="i_form" style="display:none">
+  <label>Team no.</label><input id="i_no"><label>Project title</label><input id="i_title"><label>Members (one per line)</label><textarea id="i_mem" rows="4"></textarea>
+  <label>Advisor</label><input id="i_adv"><label>Co-advisor</label><input id="i_co"><label>Report stage</label><select id="i_stage">${Object.keys(STAGES).map(k=>`<option value="${k}">${esc(STAGES[k].name)}</option>`).join('')}</select>
+  <label>Current term</label><select id="i_term"><option>Term 1</option><option>Term 2</option></select>
+  <label><input type="checkbox" id="i_q" checked> Also queue an AI evaluation request for this report (supervisor mode)</label>
+  <div class="toolbar"><button class="btn" id="i_save">Confirm and add team</button> <button class="btn" onclick="closeModal()">Cancel</button></div></div>`);
+  $('#i_file').onchange=async e=>{const f=e.target.files[0];if(!f)return;IMP_FILE=f.name;$('#i_msg').textContent='Reading...';
+    try{IMP_TXT=await extractText(f);const p=parseTitlePage(IMP_TXT);$('#i_no').value=p.no;$('#i_title').value=p.title;$('#i_mem').value=p.members;$('#i_adv').value=p.advisor;$('#i_co').value=p.coadvisor;$('#i_stage').value=p.stage;$('#i_term').value=p.term;$('#i_form').style.display='';$('#i_msg').textContent='Extracted '+IMP_TXT.split(/\s+/).length+' words. Fields below are guesses from the title page.'}catch(x){$('#i_msg').textContent='Could not read: '+x.message}};
+  $('#i_save').onclick=async()=>{const t={no:$('#i_no').value,title:$('#i_title').value,members:$('#i_mem').value,advisor:$('#i_adv').value,coadvisor:$('#i_co').value,customer:'',term:$('#i_term').value,intake:'',reg:'Pending',role:'Supervisor (own team)'};
+    if(!t.title){$('#i_msg').textContent='Project title is required.';return}
+    const before=DB.team.map(x=>x.id);if(!(await save('team',t)))return;const nt=DB.team.find(x=>!before.includes(x.id));const st=$('#i_stage').value;
+    if($('#i_q').checked&&nt&&IMP_TXT.length>=200)await save('evalreq',{team:nt.id,stage:st,mode:MODES[0],file:IMP_FILE,status:'pending',report_text:IMP_TXT,rubric:rubricSnapshot(st),prechecks:preChecks(IMP_TXT,st),draft:'',notes:''});
+    closeModal();route()};
+}
+const _vt=view_teams;view_teams=function(m){_vt(m);const tb=m.querySelector('.toolbar');if(tb){const b=document.createElement('button');b.className='btn';b.style.marginLeft='8px';b.textContent='Import from report';b.onclick=importTeamModal;tb.appendChild(b)}};
