@@ -111,17 +111,30 @@ function parseTitlePage(txt){
   const stage=detectStage(txt);
   return {title:clean(title),members:mem.join('\n'),advisor:adv,coadvisor:co,customer:cust,no,intake,stage,term:'ED'.includes(stage)?'Term 2':'Term 1'};
 }
+function sourceLines(txt,p){const L=normText(txt).split('\n').map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean).slice(0,80);const U=s=>String(s).toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+  const find=v=>{const k=U(v).slice(0,22);if(!k)return -1;return L.findIndex(l=>U(l).includes(k))};
+  const q=i=>i<0?'not found on the title page':'"'+L[i]+'"';const s={};
+  s.title=q(find(p.title.split(' ')[0]+' '+(p.title.split(' ')[1]||'')));
+  s.members=p.members.split('\n').filter(Boolean).map(m=>{const id=(m.match(/\d{6,9}/)||[''])[0];const i=id?L.findIndex(l=>l.includes(id)):find(m);return q(i)}).join(' ; ')||'none found';
+  const role=(v,re)=>{const k=U(v).slice(0,22);let i=L.findIndex((l,x)=>U(l).includes(k)&&x>0&&re.test(L[x-1]));if(i<0)i=find(v);if(i<0)return 'not found';return (i>0&&re.test(L[i-1])?'"'+L[i-1]+'" then ':'')+'"'+L[i]+'"'};
+  s.advisor=p.advisor?role(p.advisor,/advisor|supervisor/i):'no advisor name found (blank signature line ignored)';
+  s.coadvisor=p.coadvisor?role(p.coadvisor,/co-?\s*(advisor|supervisor)/i):'none found';
+  s.customer=p.customer?role(p.customer,/customer/i):'none found';
+  const ni=L.findIndex(l=>/team\s*(no|number|#)/i.test(l));s.no=p.no?q(ni):'no team number found';
+  const ii=L.findIndex(l=>/intake|\b(fall|spring|summer)\s*\d{4}/i.test(l));s.intake=p.intake?q(ii):'none found';
+  const ch=chaptersOf(txt),ks=Object.keys(ch);s.stage='chapters found: '+(ks.length?ks.map(k=>k+' '+ch[k]).join('; '):'none')+'; title page wording "progress"/"final" checked. The file name is not used.';
+  return s}
 let IMP_TXT='',IMP_FILE='';
 function importTeamModal(){
   openModal(`<h2>Import team from a report</h2><div class="hint">Upload the report (PDF/DOCX). The title page is read in your browser; check every field before saving.</div>
   <input type="file" id="i_file" accept=".pdf,.docx,.txt"><div id="i_msg" class="hint"></div><div id="i_form" style="display:none">
-  <label>Team no.</label><input id="i_no"><label>Project title</label><input id="i_title"><label>Members (one per line)</label><textarea id="i_mem" rows="4"></textarea>
-  <label>Advisor</label><input id="i_adv"><label>Co-advisor</label><input id="i_co"><label>Customer</label><input id="i_cust"><label>Intake</label><input id="i_intake"><label>Report stage</label><select id="i_stage">${Object.keys(STAGES).map(k=>`<option value="${k}">${esc(STAGES[k].name)}</option>`).join('')}</select>
+  <label>Team no.</label><input id="i_no"><div class="hint" id="s_no"></div><label>Project title</label><input id="i_title"><div class="hint" id="s_title"></div><label>Members (one per line)</label><textarea id="i_mem" rows="4"></textarea><div class="hint" id="s_members"></div>
+  <label>Advisor</label><input id="i_adv"><div class="hint" id="s_advisor"></div><label>Co-advisor</label><input id="i_co"><div class="hint" id="s_coadvisor"></div><label>Customer</label><input id="i_cust"><div class="hint" id="s_customer"></div><label>Intake</label><input id="i_intake"><div class="hint" id="s_intake"></div><label>Report stage</label><select id="i_stage">${Object.keys(STAGES).map(k=>`<option value="${k}">${esc(STAGES[k].name)}</option>`).join('')}</select><div class="hint" id="s_stage"></div>
   <label>Current term</label><select id="i_term"><option>Term 1</option><option>Term 2</option></select>
   <label><input type="checkbox" id="i_q" checked> Also queue an AI evaluation request for this report (supervisor mode)</label>
   <div class="toolbar"><button class="btn" id="i_save">Confirm and add team</button> <button class="btn" onclick="closeModal()">Cancel</button></div></div>`);
   $('#i_file').onchange=async e=>{const f=e.target.files[0];if(!f)return;IMP_FILE=f.name;$('#i_msg').textContent='Reading...';
-    try{IMP_TXT=await extractText(f);const p=parseTitlePage(IMP_TXT);$('#i_no').value=p.no;$('#i_title').value=p.title;$('#i_mem').value=p.members;$('#i_adv').value=p.advisor;$('#i_co').value=p.coadvisor;$('#i_cust').value=p.customer;$('#i_intake').value=p.intake;$('#i_stage').value=p.stage;$('#i_term').value=p.term;$('#i_form').style.display='';const ch=chaptersOf(IMP_TXT);$('#i_msg').textContent='Extracted '+IMP_TXT.split(/\s+/).length+' words. Chapters found: '+(Object.keys(ch).length?Object.keys(ch).map(k=>k+' '+ch[k]).join('; '):'none')+'. Stage guessed from the chapters (1-3 = Term 1 report; 4 or more = progress update or final). Fields are guesses: check them.'}catch(x){$('#i_msg').textContent='Could not read: '+x.message}};
+    try{IMP_TXT=await extractText(f);const p=parseTitlePage(IMP_TXT);$('#i_no').value=p.no;$('#i_title').value=p.title;$('#i_mem').value=p.members;$('#i_adv').value=p.advisor;$('#i_co').value=p.coadvisor;$('#i_cust').value=p.customer;$('#i_intake').value=p.intake;$('#i_stage').value=p.stage;$('#i_term').value=p.term;$('#i_form').style.display='';const sl=sourceLines(IMP_TXT,p);Object.keys(sl).forEach(k=>{const e=$('#s_'+k);if(e)e.textContent='Source: '+sl[k]});const ch=chaptersOf(IMP_TXT);$('#i_msg').textContent='Extracted '+IMP_TXT.split(/\s+/).length+' words. Chapters found: '+(Object.keys(ch).length?Object.keys(ch).map(k=>k+' '+ch[k]).join('; '):'none')+'. Stage guessed from the chapters (1-3 = Term 1 report; 4 or more = progress update or final). Fields are guesses: check them.'}catch(x){$('#i_msg').textContent='Could not read: '+x.message}};
   $('#i_save').onclick=async()=>{const t={no:$('#i_no').value,title:$('#i_title').value,members:$('#i_mem').value,advisor:$('#i_adv').value,coadvisor:$('#i_co').value,customer:$('#i_cust').value,term:$('#i_term').value,intake:$('#i_intake').value,reg:'Pending',role:'Supervisor (own team)'};
     if(!t.title){$('#i_msg').textContent='Project title is required.';return}
     const before=DB.team.map(x=>x.id);if(!(await save('team',t)))return;const nt=DB.team.find(x=>!before.includes(x.id));const st=$('#i_stage').value;
