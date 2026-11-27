@@ -14,7 +14,10 @@ function teamTotals(tid){
   Object.keys(STAGES).forEach(st=>{const ev=DB.evaluation.find(e=>e.team===tid&&e.stage===st&&!/^External/.test(e.role||''));if(ev){const p=stagePoints(ev,st);out[st]=p.pts;if('ABC'.includes(st))t1+=p.pts;else t2+=p.pts}});
   return {out,t1,t2,all:t1+t2};
 }
-function flags(tid){const tt=teamTotals(tid);return [['good','Marks so far: Term 1 '+tt.t1.toFixed(1)+' / 40, running total '+tt.all.toFixed(1)+' / 100.']]}
+function flags(tid){const tt=teamTotals(tid);const r=[['good','Marks so far: Term 1 '+tt.t1.toFixed(1)+' / 40, running total '+tt.all.toFixed(1)+' / 100.']];
+ const t=DB.team.find(x=>x.id===tid);const ms=(DB.meeting||[]).filter(x=>x.team===tid&&(!t||x.term===t.term)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ if(ms.length){const l=ms[0];r.push(['good','Minutes this term: '+ms.length+' / 6. Last meeting '+(l.date||'?')+'.'+(l.actions?' Actions: '+String(l.actions).replace(/\s+/g,' ').slice(0,140)+(String(l.actions).length>140?'...':''):'')])}
+ return r}
 function dashNotes(tid){const out=[];const evs=DB.evaluation.filter(e=>e.team===tid&&e.stage==='C');
  const sup=evs.find(e=>!/^External/.test(e.role||'')),ext=evs.find(e=>e.role==='External evaluator');
  if(sup){const a=((sup.scores||{})[1]||[]);if(a.length===0||a.every(x=>x==null))out.push(['sug','Advisor part (12 pts) of Stage C not scored yet.'])}
