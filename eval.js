@@ -17,10 +17,10 @@ function teamTotals(tid){
 function flags(tid){const tt=teamTotals(tid);return [['good','Marks so far: Term 1 '+tt.t1.toFixed(1)+' / 40, running total '+tt.all.toFixed(1)+' / 100.']]}
 function dashNotes(tid){const out=[];const evs=DB.evaluation.filter(e=>e.team===tid&&e.stage==='C');
  const sup=evs.find(e=>!/^External/.test(e.role||'')),ext=evs.find(e=>e.role==='External evaluator');
- if(sup){const a=((sup.scores||{})[1]||[]);if(a.length===0||a.every(x=>x==null))out.push(['warn','Advisor part (12 pts) of Stage C not scored yet.'])}
+ if(sup){const a=((sup.scores||{})[1]||[]);if(a.length===0||a.every(x=>x==null))out.push(['sug','Advisor part (12 pts) of Stage C not scored yet.'])}
  if(ext){const sc=((ext.scores||{})[0]||[]).map(x=>+(x==null?0:x));const p=sc.length?sc.reduce((a,b)=>a+b,0)/sc.length/10*15:0;out.push(['good','External evaluation saved: '+p.toFixed(1)+' / 15 (not counted in this team\'s totals).'])}
  const rq=(DB.evalreq||[]).find(r=>r.team===tid&&r.status==='draft-ready');
- if(rq&&!sup&&!ext){let dm='';try{const p=sugParse(rq.draft||'','C');const sc=((p&&p.scores)||{})[0]||[];if(sc.length&&sc.every(x=>x!=null)){const m=sc.reduce((a,b)=>a+b,0)/sc.length/10*15;dm=' Draft form marks: '+m.toFixed(1)+' / 15 (the advisor part, 12 pts, is not scored).'}}catch(e){}out.push(['warn','Draft evaluation ready in Evaluation Drafts, not saved yet, so not in the totals.'+dm])}
+ if(rq&&!sup&&!ext){let dm='';try{const p=sugParse(rq.draft||'','C');const sc=((p&&p.scores)||{})[0]||[];if(sc.length&&sc.every(x=>x!=null)){const m=sc.reduce((a,b)=>a+b,0)/sc.length/10*15;dm=' Draft form marks: '+m.toFixed(1)+' / 15 (the advisor part, 12 pts, is not scored).'}}catch(e){}out.push(['sug','Draft evaluation ready in Evaluation Drafts, not saved yet, so not in the totals.'+dm])}
  return out}
 // ---- DASHBOARD
 function view_dashboard(m){
