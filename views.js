@@ -8,7 +8,7 @@ function fieldHtml(f,v){
   return `<label>${esc(f.l)}</label>${inp}${f.hint?`<div class="hint">${esc(f.hint)}</div>`:''}`;
 }
 function readForm(fields){const o={};fields.forEach(f=>o[f.k]=document.getElementById('f_'+f.k).value);return o}
-function teamDefaults(tid,fromReq){const t=DB.team.find(x=>x.id===tid);if(!t)return {};const d={};if(t.role==='Supervisor (own team)'||t.role==='External evaluator')d.role=t.role;if(t.pdf_stage&&typeof STAGES!=='undefined'&&STAGES[t.pdf_stage])d.stage=t.pdf_stage;if(t.term==='Term 1'||t.term==='Term 2')d.term=t.term;
+function teamDefaults(tid,fromReq){const t=DB.team.find(x=>x.id===tid);if(!t)return {};const d={};d.role=teamRole(t);if(t.pdf_stage&&typeof STAGES!=='undefined'&&STAGES[t.pdf_stage])d.stage=t.pdf_stage;if(t.term==='Term 1'||t.term==='Term 2')d.term=t.term;
   if(fromReq&&typeof MODES!=='undefined'){const rq=(DB.evalreq||[]).filter(r=>r.team===tid&&r.status!=='cancelled'&&(r.mode===MODES[0]||r.mode===MODES[1])).sort((a,b)=>String(a.created||'').localeCompare(String(b.created||''))).pop();if(rq){d.role=rq.mode===MODES[0]?'Supervisor (own team)':'External evaluator';if(rq.stage&&typeof STAGES!=='undefined'&&STAGES[rq.stage])d.stage=rq.stage;d.fromReq=rq.id}}
   return d}
 function editRecord(kind,fields,title,id,after){
@@ -61,7 +61,7 @@ const TEAM_F=[{k:'no',l:'Team no.'},{k:'title',l:'Project title'},{k:'members',l
  {k:'intake',l:'Intake',ph:'e.g. Fall 2025'},{k:'reg',l:'Registration',t:'select',o:['Pending','Formation form submitted','Approved by committee']},{k:'role',l:'My role',t:'select',o:['Supervisor (own team)','External evaluator']}];
 function view_teams(m){
   m.innerHTML=head('Teams','Teams you supervise or evaluate.','<button class="btn" id="add">+ New team</button>')+
-  `<div class="panel"><table><tr><th>Team</th><th>Project</th><th>Members</th><th>Term</th><th>Registration</th><th>My role</th><th>Report PDF</th><th></th></tr>${DB.team.map(r=>`<tr><td><b>${esc(r.no)}</b></td><td>${esc(r.title)}</td><td style="white-space:pre-line">${esc(r.members)}</td><td>${esc(r.term)}</td><td>${esc(r.reg)}</td><td>${esc(r.role)}</td><td>${pdfBar(r.id)}</td><td><button class="btn sm ghost" data-e="${r.id}">Edit</button><button class="btn sm ghost" data-d="${r.id}">Delete</button></td></tr>`).join('')}</table>${empty(DB.team.length)}</div>`;
+  `<div class="panel"><table><tr><th>Team</th><th>Project</th><th>Members</th><th>Term</th><th>Registration</th><th>My role</th><th>Report PDF</th><th></th></tr>${DB.team.map(r=>`<tr><td><b>${esc(r.no)}</b></td><td>${esc(r.title)}</td><td style="white-space:pre-line">${esc(r.members)}</td><td>${esc(r.term)}</td><td>${esc(r.reg)}</td><td>${esc(teamRole(r))}</td><td>${pdfBar(r.id)}</td><td><button class="btn sm ghost" data-e="${r.id}">Edit</button><button class="btn sm ghost" data-d="${r.id}">Delete</button></td></tr>`).join('')}</table>${empty(DB.team.length)}</div>`;
   $('#add').onclick=()=>editRecord('team',TEAM_F,'New team');
   m.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>editRecord('team',TEAM_F,'Edit team',b.dataset.e));
   m.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>del(b.dataset.d));
