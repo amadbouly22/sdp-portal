@@ -22,6 +22,7 @@ async function save(kind,obj){
 async function del(id){if(!confirm('Delete this record?'))return;const r=await sb.from('records').delete().eq('id',id);if(r.error)alert(r.error.message);await loadAll();route()}
 function openModal(html){$('#mbox').innerHTML=html;$('#modal').classList.add('on')}
 function closeModal(){$('#modal').classList.remove('on')}
+function teamRole(t){if(!t)return '';const a=((t.advisor||'')+' '+(t.coadvisor||''));if(/madbouly/i.test(a))return 'Supervisor (own team)';if(a.trim().length>3)return 'External evaluator';return t.role||'External evaluator'}
 function teamName(id){const t=DB.team.find(x=>x.id===id);return t?('Team '+t.no+' - '+t.title):'-'}
 function route(){const v=(location.hash.slice(1)||'dashboard').split(':')[0];
   $('#nav').innerHTML=VIEWS.map(x=>`<a href="#${x[0]}" class="${x[0]===v?'on':''}"><i>${x[2]}</i>${x[1]}</a>`).join('');
