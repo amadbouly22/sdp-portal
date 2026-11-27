@@ -6,3 +6,4 @@ const FORM_TITLE="EE499 F26 Term 1 Conceptual Design";const FORM_GROUP={C:0};
 
 FORM_INTRO.D="Rate the following presentation categories for each team: Exemplary (9-10), Satisfactory (7-8), Developing (5-6), Unsatisfactory (2-4), Unacceptable (0-1).";
 const FORM_TITLES={C:FORM_TITLE,D:"EE499 S26 Term 2 Progress Update"};FORM_GROUP.D=0;
+window.FORM_DESC=FORM_DESC;
