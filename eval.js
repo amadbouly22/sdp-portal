@@ -11,12 +11,12 @@ function stagePoints(ev,st){ // returns {pts,max}
   const S=STAGES[st];let pts=0;S.g.forEach((g,gi)=>{const sc=(ev.scores||{})[gi]||[];const arr=g[2].map((_,i)=>+(sc[i]==null?0:sc[i]));pts+=arr.reduce((a,b)=>a+b,0)/arr.length/10*g[1]});return {pts,max:S.w}}
 function teamTotals(tid){
   const out={};let t1=0,t2=0;
-  Object.keys(STAGES).forEach(st=>{const ev=DB.evaluation.find(e=>e.team===tid&&e.stage===st&&e.role!=='External evaluator');if(ev){const p=stagePoints(ev,st);out[st]=p.pts;if('ABC'.includes(st))t1+=p.pts;else t2+=p.pts}});
+  Object.keys(STAGES).forEach(st=>{const ev=DB.evaluation.find(e=>e.team===tid&&e.stage===st&&!/^External/.test(e.role||''));if(ev){const p=stagePoints(ev,st);out[st]=p.pts;if('ABC'.includes(st))t1+=p.pts;else t2+=p.pts}});
   return {out,t1,t2,all:t1+t2};
 }
 function flags(tid){const tt=teamTotals(tid);return [['good','Marks so far: Term 1 '+tt.t1.toFixed(1)+' / 40, running total '+tt.all.toFixed(1)+' / 100.']]}
 function dashNotes(tid){const out=[];const evs=DB.evaluation.filter(e=>e.team===tid&&e.stage==='C');
- const sup=evs.find(e=>e.role!=='External evaluator'),ext=evs.find(e=>e.role==='External evaluator');
+ const sup=evs.find(e=>!/^External/.test(e.role||'')),ext=evs.find(e=>e.role==='External evaluator');
  if(sup){const a=((sup.scores||{})[1]||[]);if(a.length===0||a.every(x=>x==null))out.push(['warn','Advisor part (12 pts) of Stage C not scored yet.'])}
  if(ext){const sc=((ext.scores||{})[0]||[]).map(x=>+(x==null?0:x));const p=sc.length?sc.reduce((a,b)=>a+b,0)/sc.length/10*15:0;out.push(['good','External evaluation saved: '+p.toFixed(1)+' / 15 (not counted in this team\'s totals).'])}
  const rq=(DB.evalreq||[]).find(r=>r.team===tid&&r.status==='draft-ready');
